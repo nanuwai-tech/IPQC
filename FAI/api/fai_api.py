@@ -632,7 +632,14 @@ def get_stations(
         tb_enc = urllib.parse.quote(time_block)
         
         # Optimize query by passing date filters directly to Supabase to save egress!
-        valid_audits = supabase_db_query("audits", params=f"time_block=eq.{tb_enc}&audit_time=gte.{date}T00:00:00&audit_time=lte.{date}T23:59:59&select=*")
+        from datetime import timedelta
+        try:
+            t_dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+            n_dt = t_dt + timedelta(days=1)
+            n_str = n_dt.strftime("%Y-%m-%d")
+        except:
+            n_str = date
+        valid_audits = supabase_db_query("audits", params=f"time_block=eq.{tb_enc}&audit_time=gte.{date}T00:00:00&audit_time=lte.{n_str}T23:59:59&select=*")
         if not isinstance(valid_audits, list): valid_audits = []
         
         for s in results:
@@ -652,7 +659,7 @@ def get_factory_phases():
             "id": "Phase 1",
             "name": "Phase 1 (Building A)",
             "smt_lines": ["T1", "T2", "T3", "T4", "P1", "P2", "P5"],
-            "dip_lines": ["DIP51", "DIP1", "DIP3"],
+            "dip_lines": ["DIP51", "DIP1", "DIP2"],
             "total_smt_stations": 70,
             "total_dip_stations": 33
         },
@@ -660,7 +667,7 @@ def get_factory_phases():
             "id": "Phase 2",
             "name": "Phase 2 (Building B)",
             "smt_lines": ["P6", "P7", "T5", "P8"],
-            "dip_lines": ["DIP52", "DIP2"],
+            "dip_lines": ["DIP52", "DIP3"],
             "total_smt_stations": 40,
             "total_dip_stations": 22
         }
@@ -669,8 +676,8 @@ def get_factory_phases():
 @router.get("/factory/lines")
 def get_factory_lines():
     phases = [
-        {"phase": "Phase 1", "smt": ["T1", "T2", "T3", "T4", "P1", "P2", "P5"], "dip": ["DIP51", "DIP1", "DIP3"]},
-        {"phase": "Phase 2", "smt": ["P6", "P7", "T5", "P8"], "dip": ["DIP52", "DIP2"]}
+        {"phase": "Phase 1", "smt": ["T1", "T2", "T3", "T4", "P1", "P2", "P5"], "dip": ["DIP51", "DIP1", "DIP2"]},
+        {"phase": "Phase 2", "smt": ["P6", "P7", "T5", "P8"], "dip": ["DIP52", "DIP3"]}
     ]
     lines_list = []
     for p in phases:
@@ -870,8 +877,15 @@ def get_audits(
     filters = []
     
     if date:
+        from datetime import timedelta
+        try:
+            t_dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+            n_dt = t_dt + timedelta(days=1)
+            n_str = n_dt.strftime("%Y-%m-%d")
+        except:
+            n_str = date
         filters.append(f"audit_time=gte.{date}T00:00:00")
-        filters.append(f"audit_time=lte.{date}T23:59:59")
+        filters.append(f"audit_time=lte.{n_str}T23:59:59")
     if line_name and line_name != "All Lines":
         filters.append(f"line_name=eq.{urllib.parse.quote(line_name)}")
     if model_no:

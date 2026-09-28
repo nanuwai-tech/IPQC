@@ -1,10 +1,10 @@
-const CACHE_NAME = 'ipqc-prod-v37';
+const CACHE_NAME = 'ipqc-prod-v137';
 const ASSETS_TO_CACHE = [
   '/',
-  '/css/styles.css?v=10',
+  '/css/styles.css?v=99',
   '/js/translations.js',
-  '/js/checklist_data.js?v=8',
-  '/js/app.js?v=16',
+  '/js/checklist_data.js?v=99',
+  '/js/app.js?v=99',
   '/manifest.json'
 ];
 

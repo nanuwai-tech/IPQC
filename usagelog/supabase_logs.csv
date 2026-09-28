@@ -1,0 +1,828 @@
+id,date,method,pathname,status,timestamp,level,event_message,log_type,log_count,logs,auth_user
+0b942d29-a5db-4bd3-a916-50343678848a,"""2026-09-26T01:42:09.506Z""",,,42703,2026-09-26T01:42:09.506000,error,column users.email does not exist,postgres,null,[],null
+50bbb503-bd4c-4c32-8f9f-2f23bb25d9ed,"""2026-09-26T01:41:17.810Z""",,,00000,2026-09-26T01:41:17.810000,success,"checkpoint complete: wrote 60 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=6.034 s, sync=0.005 s, total=6.078 s; sync files=22, longest=0.003 s, average=0.001 s; distance=32905 kB, estimate=46458 kB; lsn=D/EB023CA8, redo lsn=D/EB023C18",postgres,null,[],null
+2b98500f-8117-4bc1-bedb-2d590ad8160d,"""2026-09-26T01:41:11.736Z""",,,00000,2026-09-26T01:41:11.736000,success,checkpoint starting: time,postgres,null,[],null
+f23fef55-ebf3-4eeb-b22b-158c0b866c25,"""2026-09-26T01:40:06.951Z""",,,42703,2026-09-26T01:40:06.951000,error,column users.email does not exist,postgres,null,[],null
+4e793040-bb9d-436a-a9d0-98d9794b117f,"""2026-09-26T01:39:13.536Z""",,,00000,2026-09-26T01:39:13.536000,success,"statement: SET statement_timeout='58s'; SET idle_session_timeout='58s';
+
+CREATE OR REPLACE FUNCTION pg_temp.count_estimate(
+    query text
+) RETURNS integer LANGUAGE plpgsql AS $$
+DECLARE
+    plan jsonb;
+BEGIN
+    EXECUTE 'EXPLAIN (FORMAT JSON)' || query INTO plan;
+    RETURN plan->0->'Plan'->'Plan Rows';
+END;
+$$;
+
+
+with approximation as (
+    select
+      reltuples as estimate,
+      -- Whole-tree heap size. A partitioned PARENT (relkind 'p') has no storage
+      -- of its own, so its size is the sum over pg_partition_tree; every other
+      -- relkind uses its own heap directly (pg_partition_tree returns NO rows
+      -- for a plain non-partitioned table, so it cannot be used unconditionally).
+      -- Views/foreign tables yield 0 (-> exact count, unchanged behavior).
+      case when relkind = 'p'
+        then (select coalesce(sum(pg_relation_size(relid)), 0) from pg_partition_tree(oid))
+        else pg_relation_size(oid)
+      end as bytes
+    from pg_class
+    where oid = 26240
+)
+select
+  case
+    when estimate = -1 and bytes > 10000000 then pg_temp.count_estimate('select * from public.fai_master_profiles')
+    when estimate > 50000 then estimate
+    else (select count(*) from public.fai_master_profiles)
+  end as count,
+  (estimate > 50000 or (estimate = -1 and bytes > 10000000)) as is_estimate
+from approximation;
+
+
+-- source: dashboard
+-- user: session:9e9a5216-4ff4-44fb-8e1c-0b76b1dbe67f
+-- date: 2026-09-26T01:39:13.067Z",postgres,null,[],null
+dbd96ca6-c7c8-4ab6-9d21-82c79fd63851,"""2026-09-26T01:39:09.573Z""",,,00000,2026-09-26T01:39:09.573000,success,"statement: SET statement_timeout='58s'; SET idle_session_timeout='58s';
+
+CREATE OR REPLACE FUNCTION pg_temp.count_estimate(
+    query text
+) RETURNS integer LANGUAGE plpgsql AS $$
+DECLARE
+    plan jsonb;
+BEGIN
+    EXECUTE 'EXPLAIN (FORMAT JSON)' || query INTO plan;
+    RETURN plan->0->'Plan'->'Plan Rows';
+END;
+$$;
+
+
+with approximation as (
+    select
+      reltuples as estimate,
+      -- Whole-tree heap size. A partitioned PARENT (relkind 'p') has no storage
+      -- of its own, so its size is the sum over pg_partition_tree; every other
+      -- relkind uses its own heap directly (pg_partition_tree returns NO rows
+      -- for a plain non-partitioned table, so it cannot be used unconditionally).
+      -- Views/foreign tables yield 0 (-> exact count, unchanged behavior).
+      case when relkind = 'p'
+        then (select coalesce(sum(pg_relation_size(relid)), 0) from pg_partition_tree(oid))
+        else pg_relation_size(oid)
+      end as bytes
+    from pg_class
+    where oid = 17546
+)
+select
+  case
+    when estimate = -1 and bytes > 10000000 then pg_temp.count_estimate('select * from public.users')
+    when estimate > 50000 then estimate
+    else (select count(*) from public.users)
+  end as count,
+  (estimate > 50000 or (estimate = -1 and bytes > 10000000)) as is_estimate
+from approximation;
+
+
+-- source: dashboard
+-- user: session:9e9a5216-4ff4-44fb-8e1c-0b76b1dbe67f
+-- date: 2026-09-26T01:39:09.109Z",postgres,null,[],null
+16b5d299-c4fb-4682-a2f8-6b8e5e7f7075,"""2026-09-26T01:37:59.427Z""",,,23505,2026-09-26T01:37:59.427000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+9abca48d-1609-4606-aca2-f927d1081f61,"""2026-09-26T01:37:01.447Z""",,,00000,2026-09-26T01:37:01.447000,success,"checkpoint complete: wrote 500 buffers (1.7%); 0 WAL file(s) added, 0 removed, 3 recycled; write=50.269 s, sync=0.004 s, total=50.302 s; sync files=19, longest=0.004 s, average=0.001 s; distance=47964 kB, estimate=47964 kB; lsn=D/E9005A20, redo lsn=D/E9001728",postgres,null,[],null
+95f5c81e-3124-41e7-9c77-7edd1738103c,"""2026-09-26T01:36:11.146Z""",,,00000,2026-09-26T01:36:11.146000,success,checkpoint starting: time,postgres,null,[],null
+ffd042e3-cbf3-403e-9ccf-072be13dda29,"""2026-09-26T01:34:49.934Z""",,,42703,2026-09-26T01:34:49.934000,error,column users.email does not exist,postgres,null,[],null
+7ef37caa-f735-40e7-b8ed-3921d3b888ed,"""2026-09-26T01:31:38.842Z""",,,00000,2026-09-26T01:31:38.842000,success,"checkpoint complete: wrote 275 buffers (1.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=27.551 s, sync=0.004 s, total=27.577 s; sync files=17, longest=0.004 s, average=0.001 s; distance=33935 kB, estimate=47578 kB; lsn=D/E71CE400, redo lsn=D/E612A548",postgres,null,[],null
+69cc3f1b-3d9b-43f6-9fc9-15d5ba98c693,"""2026-09-26T01:31:11.267Z""",,,00000,2026-09-26T01:31:11.267000,success,checkpoint starting: time,postgres,null,[],null
+562051f1-da1c-441d-ad1c-7383c5ac591d,"""2026-09-26T01:26:13.949Z""",,,00000,2026-09-26T01:26:13.949000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.229 s, sync=0.004 s, total=2.261 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49094 kB, estimate=49094 kB; lsn=D/E40067E8, redo lsn=D/E4006790",postgres,null,[],null
+f9635c44-7a22-473c-848b-204862e25f25,"""2026-09-26T01:26:11.689Z""",,,00000,2026-09-26T01:26:11.689000,success,checkpoint starting: time,postgres,null,[],null
+125854de-1703-4608-8851-c9ad7fe23e1f,"""2026-09-26T01:21:14.011Z""",,,00000,2026-09-26T01:21:14.011000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=2.214 s, sync=0.004 s, total=2.238 s; sync files=8, longest=0.003 s, average=0.001 s; distance=16467 kB, estimate=40412 kB; lsn=D/E1014E30, redo lsn=D/E1014DD8",postgres,null,[],null
+632cb39a-80ee-4001-823f-809914964e42,"""2026-09-26T01:21:11.773Z""",,,00000,2026-09-26T01:21:11.773000,success,checkpoint starting: time,postgres,null,[],null
+72c26bb4-c185-401d-81bd-e555f58a4416,"""2026-09-26T01:16:13.423Z""",,,00000,2026-09-26T01:16:13.423000,success,"checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.087 s, sync=0.004 s, total=2.118 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32692 kB, estimate=43072 kB; lsn=D/E0000080, redo lsn=D/E0000028",postgres,null,[],null
+31ab3f19-73ff-4205-b8ad-bde4a77b0736,"""2026-09-26T01:16:11.306Z""",,,00000,2026-09-26T01:16:11.306000,success,checkpoint starting: time,postgres,null,[],null
+0355fc24-0a1d-4c5f-a721-ee323c973611,"""2026-09-26T01:13:11.280Z""",,,42703,2026-09-26T01:13:11.280000,error,column users.email does not exist,postgres,null,[],null
+1c78f942-9636-45bc-bcad-cc3154432298,"""2026-09-26T01:01:12.548Z""",,,00000,2026-09-26T01:01:12.548000,success,"checkpoint complete: wrote 20 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=2.047 s, sync=0.004 s, total=2.081 s; sync files=5, longest=0.003 s, average=0.001 s; distance=16459 kB, estimate=44225 kB; lsn=D/DE012D88, redo lsn=D/DE012D30",postgres,null,[],null
+1a66a466-c1af-4b17-b2b4-0ed5b9cff7aa,"""2026-09-26T01:01:10.471Z""",,,00000,2026-09-26T01:01:10.471000,success,checkpoint starting: time,postgres,null,[],null
+89819134-d718-4d26-bb41-8f13b4c17988,"""2026-09-25T23:21:09.843Z""",,,00000,2026-09-25T23:21:09.843000,success,"checkpoint complete: wrote 17 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.609 s, sync=0.003 s, total=1.629 s; sync files=6, longest=0.002 s, average=0.001 s; distance=32761 kB, estimate=47311 kB; lsn=D/DD0000B8, redo lsn=D/DD000060",postgres,null,[],null
+dcb0133f-adf8-423e-9a58-ade47a240611,"""2026-09-25T23:21:08.215Z""",,,00000,2026-09-25T23:21:08.215000,success,checkpoint starting: time,postgres,null,[],null
+39826795-e559-4589-a3a4-fa84676aefb2,"""2026-09-25T23:16:09.936Z""",,,00000,2026-09-25T23:16:09.936000,success,"checkpoint complete: wrote 15 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.409 s, sync=0.003 s, total=1.434 s; sync files=6, longest=0.003 s, average=0.001 s; distance=48927 kB, estimate=48927 kB; lsn=D/DB001B68, redo lsn=D/DB001B10",postgres,null,[],null
+62f14e80-dec9-4e9d-b899-1e5ec0d33fb3,"""2026-09-25T23:16:08.503Z""",,,00000,2026-09-25T23:16:08.503000,success,checkpoint starting: time,postgres,null,[],null
+acd62835-170d-4b21-8ec5-497109b29e93,"""2026-09-25T23:11:13.155Z""",,,00000,2026-09-25T23:11:13.155000,success,"checkpoint complete: wrote 43 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=4.249 s, sync=0.004 s, total=4.274 s; sync files=16, longest=0.003 s, average=0.001 s; distance=16614 kB, estimate=45832 kB; lsn=D/D803AEE8, redo lsn=D/D8039C00",postgres,null,[],null
+26de600a-28ee-4958-9e40-94343cd6e8f6,"""2026-09-25T23:11:08.883Z""",,,00000,2026-09-25T23:11:08.883000,success,checkpoint starting: time,postgres,null,[],null
+8cc3189d-5552-426f-9a44-06486591d5f9,"""2026-09-25T23:06:09.619Z""",,,00000,2026-09-25T23:06:09.619000,success,"checkpoint complete: wrote 7 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.627 s, sync=0.005 s, total=0.660 s; sync files=6, longest=0.004 s, average=0.001 s; distance=49078 kB, estimate=49078 kB; lsn=D/D7000080, redo lsn=D/D7000028",postgres,null,[],null
+a122b378-4a32-4db8-b845-0d4407b46ecb,"""2026-09-25T23:06:08.959Z""",,,00000,2026-09-25T23:06:08.959000,success,checkpoint starting: time,postgres,null,[],null
+0adb1ab5-c492-4e2d-a066-369421d7698b,"""2026-09-25T23:01:11.613Z""",,,00000,2026-09-25T23:01:11.613000,success,"checkpoint complete: wrote 30 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.916 s, sync=0.004 s, total=2.941 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32837 kB, estimate=44735 kB; lsn=D/D40125C0, redo lsn=D/D4012568",postgres,null,[],null
+82c2a9a7-8e8f-4e6c-a248-1976df9ba7d5,"""2026-09-25T23:01:08.673Z""",,,00000,2026-09-25T23:01:08.673000,success,checkpoint starting: time,postgres,null,[],null
+c455dd0b-e7d9-4ba5-82c5-332b21264257,"""2026-09-25T22:59:43.947Z""",,,42703,2026-09-25T22:59:43.947000,error,column users.email does not exist,postgres,null,[],null
+de53c80c-926a-4f06-98f0-b33da8ad65ec,"""2026-09-25T22:56:09.357Z""",,,00000,2026-09-25T22:56:09.357000,success,"checkpoint complete: wrote 14 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.312 s, sync=0.004 s, total=1.333 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32767 kB, estimate=46057 kB; lsn=D/D2001188, redo lsn=D/D2001130",postgres,null,[],null
+08c6adc6-0bfa-41f0-989b-7a6726728a68,"""2026-09-25T22:56:08.025Z""",,,00000,2026-09-25T22:56:08.025000,success,checkpoint starting: time,postgres,null,[],null
+18897aed-1ba1-4fb1-84d3-e04b7b3bf499,"""2026-09-25T22:51:12.653Z""",,,00000,2026-09-25T22:51:12.653000,success,"checkpoint complete: wrote 38 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.724 s, sync=0.004 s, total=3.748 s; sync files=10, longest=0.003 s, average=0.001 s; distance=32742 kB, estimate=47534 kB; lsn=D/D0001560, redo lsn=D/D00014D0",postgres,null,[],null
+6555373b-bb34-4e16-b60f-29e5e422e513,"""2026-09-25T22:51:08.905Z""",,,00000,2026-09-25T22:51:08.905000,success,checkpoint starting: time,postgres,null,[],null
+5c86eb88-dc69-424a-91b1-c3a53d0425b8,"""2026-09-25T22:46:11.560Z""",,,00000,2026-09-25T22:46:11.560000,success,"checkpoint complete: wrote 28 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.746 s, sync=0.004 s, total=2.784 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49178 kB, estimate=49178 kB; lsn=D/CE011708, redo lsn=D/CE007B38",postgres,null,[],null
+ba83ccfd-a1d4-44ac-b5d0-2a4e02318d43,"""2026-09-25T22:46:08.778Z""",,,00000,2026-09-25T22:46:08.778000,success,checkpoint starting: time,postgres,null,[],null
+fd19bcef-a121-4fc1-8b62-cc410a8117a3,"""2026-09-25T22:36:11.145Z""",,,00000,2026-09-25T22:36:11.145000,success,"checkpoint complete: wrote 29 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.041 s, sync=0.004 s, total=3.071 s; sync files=12, longest=0.003 s, average=0.001 s; distance=49156 kB, estimate=49156 kB; lsn=D/CB001288, redo lsn=D/CB001230",postgres,null,[],null
+02829e7f-e1c5-40f0-a24e-700d2ee9723d,"""2026-09-25T22:36:08.074Z""",,,00000,2026-09-25T22:36:08.074000,success,checkpoint starting: time,postgres,null,[],null
+592fbe50-5d7f-4d9b-82d9-db73b1556950,"""2026-09-25T22:31:10.639Z""",,,00000,2026-09-25T22:31:10.639000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.215 s, sync=0.004 s, total=2.239 s; sync files=9, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=47513 kB; lsn=D/C8000080, redo lsn=D/C8000028",postgres,null,[],null
+badc6527-fc0f-4bf1-b4e2-fa280f300a5b,"""2026-09-25T22:31:08.400Z""",,,00000,2026-09-25T22:31:08.400000,success,checkpoint starting: time,postgres,null,[],null
+a3458d40-5cf4-47f9-b49e-8bc71f53488c,"""2026-09-25T22:26:09.057Z""",,,00000,2026-09-25T22:26:09.057000,success,"checkpoint complete: wrote 6 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.553 s, sync=0.005 s, total=0.586 s; sync files=6, longest=0.004 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/C6000080, redo lsn=D/C6000028",postgres,null,[],null
+e6250cbc-937e-4435-9327-1342fee09d41,"""2026-09-25T22:26:08.472Z""",,,00000,2026-09-25T22:26:08.472000,success,checkpoint starting: time,postgres,null,[],null
+f9333b7c-4fe9-453c-8156-dd8dbc279654,"""2026-09-25T22:21:12.036Z""",,,00000,2026-09-25T22:21:12.036000,success,"checkpoint complete: wrote 34 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.319 s, sync=0.004 s, total=3.345 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32707 kB, estimate=47491 kB; lsn=D/C3000080, redo lsn=D/C3000028",postgres,null,[],null
+544cadaa-99e4-495c-92a2-c22d955c9fdd,"""2026-09-25T22:21:08.691Z""",,,00000,2026-09-25T22:21:08.691000,success,checkpoint starting: time,postgres,null,[],null
+cadaa6ab-2078-4007-bc8f-27e5d35220e5,"""2026-09-25T22:16:24.625Z""",,,23505,2026-09-25T22:16:24.625000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+7b8401db-2b3e-42de-98b2-f5cdf00eee27,"""2026-09-25T22:16:12.380Z""",,,00000,2026-09-25T22:16:12.380000,success,"checkpoint complete: wrote 38 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.729 s, sync=0.004 s, total=3.753 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49133 kB, estimate=49133 kB; lsn=D/C100F310, redo lsn=D/C100F280",postgres,null,[],null
+0ba48873-989c-49ac-b84d-c33e2dba5bf9,"""2026-09-25T22:16:08.628Z""",,,00000,2026-09-25T22:16:08.628000,success,checkpoint starting: time,postgres,null,[],null
+10d167f2-5881-4e99-a1be-d224967cbf12,"""2026-09-25T22:11:12.217Z""",,,00000,2026-09-25T22:11:12.217000,success,"checkpoint complete: wrote 35 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.482 s, sync=0.004 s, total=3.514 s; sync files=12, longest=0.003 s, average=0.001 s; distance=32821 kB, estimate=48332 kB; lsn=D/BE013C18, redo lsn=D/BE013BC0",postgres,null,[],null
+e57a0211-22ac-4f7d-9268-fd5b6dd0fd7b,"""2026-09-25T22:11:08.704Z""",,,00000,2026-09-25T22:11:08.704000,success,checkpoint starting: time,postgres,null,[],null
+a49b1f38-4953-4fd2-b54e-7360e4b44020,"""2026-09-25T22:06:12.362Z""",,,00000,2026-09-25T22:06:12.362000,success,"checkpoint complete: wrote 43 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.229 s, sync=0.004 s, total=4.258 s; sync files=12, longest=0.003 s, average=0.001 s; distance=49177 kB, estimate=50055 kB; lsn=D/BC0066A0, redo lsn=D/BC006648",postgres,null,[],null
+d2b88aae-3b74-4b04-b4c4-02b17a1a7938,"""2026-09-25T22:06:08.106Z""",,,00000,2026-09-25T22:06:08.106000,success,checkpoint starting: time,postgres,null,[],null
+c54bcd54-c5e8-4220-aa29-366b383c685b,"""2026-09-25T22:04:37.628Z""",,,23505,2026-09-25T22:04:37.628000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+5e269e0d-ba3e-469b-ba80-e689e8243a9f,"""2026-09-25T22:01:10.702Z""",,,00000,2026-09-25T22:01:10.702000,success,"checkpoint complete: wrote 20 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.997 s, sync=0.004 s, total=2.030 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32767 kB, estimate=50153 kB; lsn=D/B9000080, redo lsn=D/B9000028",postgres,null,[],null
+2c751737-dc75-4663-9695-538502caa7e7,"""2026-09-25T22:01:08.674Z""",,,00000,2026-09-25T22:01:08.674000,success,checkpoint starting: time,postgres,null,[],null
+37e18837-49a7-40a3-b3aa-d9a379e8c592,"""2026-09-25T21:51:10.102Z""",,,00000,2026-09-25T21:51:10.102000,success,"checkpoint complete: wrote 19 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=1.810 s, sync=0.004 s, total=1.830 s; sync files=6, longest=0.003 s, average=0.001 s; distance=16384 kB, estimate=52085 kB; lsn=D/B70000B8, redo lsn=D/B7000060",postgres,null,[],null
+8b3d0d81-3cc1-4269-abfa-c4d398f0aaae,"""2026-09-25T21:51:08.273Z""",,,00000,2026-09-25T21:51:08.273000,success,checkpoint starting: time,postgres,null,[],null
+1a655acf-455e-4d1a-82e4-3012f5146fba,"""2026-09-25T21:46:18.043Z""",,,00000,2026-09-25T21:46:18.043000,success,"checkpoint complete: wrote 97 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=9.819 s, sync=0.004 s, total=9.851 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49144 kB, estimate=56052 kB; lsn=D/B60000B8, redo lsn=D/B6000028",postgres,null,[],null
+14d11620-b7b1-4877-b6ba-914c6727bdf4,"""2026-09-25T21:46:08.192Z""",,,00000,2026-09-25T21:46:08.192000,success,checkpoint starting: time,postgres,null,[],null
+dfbddd0f-4f2e-4e7d-92b1-9ff2c6edfffc,"""2026-09-25T21:44:02.733Z""",,,42703,2026-09-25T21:44:02.733000,error,column users.email does not exist,postgres,null,[],null
+8361a2fa-4157-44f7-885d-1ae87b58ccc6,"""2026-09-25T21:41:09.585Z""",,,00000,2026-09-25T21:41:09.585000,success,"checkpoint complete: wrote 12 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.108 s, sync=0.004 s, total=1.129 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32767 kB, estimate=56819 kB; lsn=D/B3001E70, redo lsn=D/B3001E18",postgres,null,[],null
+f00e1958-201e-4cef-85d9-1904a50f5ec6,"""2026-09-25T21:41:08.457Z""",,,00000,2026-09-25T21:41:08.457000,success,checkpoint starting: time,postgres,null,[],null
+3f0e1acb-4b14-4fc9-8b0a-0e27cb77964d,"""2026-09-25T21:36:09.140Z""",,,00000,2026-09-25T21:36:09.140000,success,"checkpoint complete: wrote 9 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.813 s, sync=0.004 s, total=0.840 s; sync files=6, longest=0.003 s, average=0.001 s; distance=49148 kB, estimate=59492 kB; lsn=D/B1001FA8, redo lsn=D/B1001F50",postgres,null,[],null
+f91c5e2f-4d36-43c9-b83e-379006b82f70,"""2026-09-25T21:36:08.301Z""",,,00000,2026-09-25T21:36:08.301000,success,checkpoint starting: time,postgres,null,[],null
+9b6c37ac-8e71-48a4-8c1b-217f7671bb3b,"""2026-09-25T21:31:08.963Z""",,,00000,2026-09-25T21:31:08.963000,success,"checkpoint complete: wrote 10 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.908 s, sync=0.005 s, total=0.931 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32779 kB, estimate=60641 kB; lsn=D/AE003FB0, redo lsn=D/AE002DC0",postgres,null,[],null
+e0b62476-6e0f-48d5-ac58-154bc608424e,"""2026-09-25T21:31:08.033Z""",,,00000,2026-09-25T21:31:08.033000,success,checkpoint starting: time,postgres,null,[],null
+cdd02f91-8964-4ca8-851d-15d7139e754d,"""2026-09-25T21:26:08.666Z""",,,00000,2026-09-25T21:26:08.666000,success,"checkpoint complete: wrote 11 buffers (0.0%); 0 WAL file(s) added, 0 removed, 4 recycled; write=1.122 s, sync=0.004 s, total=1.159 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=63737 kB; lsn=D/AC0000B8, redo lsn=D/AC000028",postgres,null,[],null
+a62c9abe-119a-456c-bcb8-19bcc4f15800,"""2026-09-25T21:26:07.508Z""",,,00000,2026-09-25T21:26:07.508000,success,checkpoint starting: time,postgres,null,[],null
+b2f4217e-958b-4aab-8e35-496bc211c00a,"""2026-09-25T21:21:13.533Z""",,,08006,2026-09-25T21:21:13.533000,success,could not receive data from client: Connection reset by peer,postgres,null,[],null
+746723de-b7eb-49bf-9596-62e47ad9e6ad,"""2026-09-25T21:21:07.145Z""",,,00000,2026-09-25T21:21:07.145000,success,"checkpoint complete: wrote 40 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.017 s, sync=0.004 s, total=0.051 s; sync files=14, longest=0.003 s, average=0.001 s; distance=65357 kB, estimate=65357 kB; lsn=D/A9000080, redo lsn=D/A9000028",postgres,null,[],null
+fe741d69-2130-4125-994c-112936f79cc8,"""2026-09-25T21:21:07.094Z""",,,00000,2026-09-25T21:21:07.094000,success,checkpoint starting: immediate force wait,postgres,null,[],null
+94083730-c683-4293-b571-7bcd3767bd67,"""2026-09-25T21:19:30.294Z""",,,23505,2026-09-25T21:19:30.294000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+e6cf34bf-2164-46d6-a0a3-dc1e45800b5a,"""2026-09-25T21:16:15.501Z""",,,00000,2026-09-25T21:16:15.501000,success,"checkpoint complete: wrote 32 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.302 s, sync=0.003 s, total=3.330 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32939 kB, estimate=42459 kB; lsn=D/A6000060, redo lsn=D/A502C930",postgres,null,[],null
+e97d4f4c-833f-4c19-bdfc-9e298b2b8e94,"""2026-09-25T21:16:12.172Z""",,,00000,2026-09-25T21:16:12.172000,success,checkpoint starting: time,postgres,null,[],null
+0ee170a8-591c-4888-81d3-f5300cdc8129,"""2026-09-25T21:15:11.087Z""",,,42703,2026-09-25T21:15:11.087000,error,column users.email does not exist,postgres,null,[],null
+e228d35b-5247-4576-a2c1-4df2ca2faa0c,"""2026-09-25T21:12:00.422Z""",,,42703,2026-09-25T21:12:00.422000,error,column users.email does not exist,postgres,null,[],null
+906446d9-4c55-47c8-9a81-9ed36861e3cb,"""2026-09-25T21:11:59.675Z""",,,42703,2026-09-25T21:11:59.675000,error,column users.email does not exist,postgres,null,[],null
+9aebdc9a-fdd5-4cad-a930-18c0ace4fdda,"""2026-09-25T21:11:14.643Z""",,,00000,2026-09-25T21:11:14.643000,success,"checkpoint complete: wrote 25 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.420 s, sync=0.004 s, total=2.443 s; sync files=12, longest=0.003 s, average=0.001 s; distance=32724 kB, estimate=43517 kB; lsn=D/A3001A80, redo lsn=D/A3001A28",postgres,null,[],null
+5a3b298e-66ad-47fe-9291-e7cce0a740f1,"""2026-09-25T21:11:12.201Z""",,,00000,2026-09-25T21:11:12.201000,success,checkpoint starting: time,postgres,null,[],null
+48a18d39-5b45-4dc7-9060-661f14298a97,"""2026-09-25T21:06:14.907Z""",,,00000,2026-09-25T21:06:14.907000,success,"checkpoint complete: wrote 19 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.929 s, sync=0.002 s, total=1.958 s; sync files=5, longest=0.002 s, average=0.001 s; distance=32818 kB, estimate=44716 kB; lsn=D/A2000060, redo lsn=D/A100C9F0",postgres,null,[],null
+e3b77c06-2e2b-415f-9a5a-62f76556e11d,"""2026-09-25T21:06:12.950Z""",,,00000,2026-09-25T21:06:12.950000,success,checkpoint starting: time,postgres,null,[],null
+bb98b1ab-13fc-4e91-bd23-c41e6a00706a,"""2026-09-25T21:06:01.905Z""",,,,2026-09-25T21:06:01.905553,success,"127.0.0.1 - anon [25/Sep/2026:21:06:01 +0000] ""PATCH /fai_master_profiles?model_no=neq.MOLLY%20DONGLE%20-BOT%20V3 HTTP/1.1"" 500 100 """" ""Python-urllib/3.12""",postgrest,null,[],null
+f96d92c4-8262-434f-aac9-157d32f8f387,"""2026-09-25T21:06:01.881Z""",,,,2026-09-25T21:06:01.881094,success,"{""code"":""57014"",""details"":null,""hint"":null,""message"":""canceling statement due to statement timeout""}",postgrest,null,[],null
+f53be7a3-24bb-477b-aa5d-4ae1acc42ae3,"""2026-09-25T21:06:01.871Z""",,,57014,2026-09-25T21:06:01.871000,error,canceling statement due to statement timeout,postgres,null,[],null
+3f3ff0cd-c096-4c3f-8f9f-b0ff8a6af4a8,"""2026-09-25T21:05:59.875Z""",,,00000,2026-09-25T21:05:59.875000,success,process 3782015 still waiting for ShareLock on transaction 86807 after 1000.136 ms,postgres,null,[],null
+57901265-9e61-45eb-adbc-a37ffaeb904b,"""2026-09-25T21:05:52.981Z""",,,42703,2026-09-25T21:05:52.981000,error,column users.email does not exist,postgres,null,[],null
+f2c3c503-1303-4b65-9259-69b59728dad4,"""2026-09-25T21:05:52.730Z""",,,42703,2026-09-25T21:05:52.730000,error,column users.email does not exist,postgres,null,[],null
+1d0cebe2-673a-4786-95af-e2e55b422c6d,"""2026-09-25T20:46:14.933Z""",,,00000,2026-09-25T20:46:14.933000,success,"checkpoint complete: wrote 28 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.793 s, sync=0.003 s, total=2.817 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=46039 kB; lsn=D/A0000060, redo lsn=D/9F000028",postgres,null,[],null
+a14f7e35-5c02-4467-b638-b8cabfad8391,"""2026-09-25T20:46:12.116Z""",,,00000,2026-09-25T20:46:12.116000,success,checkpoint starting: time,postgres,null,[],null
+5069b7d0-fb82-4a7d-909c-8abbf147cd79,"""2026-09-25T20:41:12.798Z""",,,00000,2026-09-25T20:41:12.798000,success,"checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.714 s, sync=0.004 s, total=0.739 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=47513 kB; lsn=D/9D000080, redo lsn=D/9D000028",postgres,null,[],null
+3c829ca0-995c-4d4b-bde2-07f29ad0abbe,"""2026-09-25T20:41:12.059Z""",,,00000,2026-09-25T20:41:12.059000,success,checkpoint starting: time,postgres,null,[],null
+e7bb361b-5646-4ba5-8f3d-20e0b1c19099,"""2026-09-25T20:36:14.653Z""",,,00000,2026-09-25T20:36:14.653000,success,"checkpoint complete: wrote 26 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.545 s, sync=0.004 s, total=2.579 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/9B000080, redo lsn=D/9B000028",postgres,null,[],null
+018f5f09-2a74-49ba-b0f2-95459a19bd65,"""2026-09-25T20:36:12.075Z""",,,00000,2026-09-25T20:36:12.075000,success,checkpoint starting: time,postgres,null,[],null
+a896eb94-5ed3-4fb2-bc36-247d1ce6f082,"""2026-09-25T20:31:14.647Z""",,,00000,2026-09-25T20:31:14.647000,success,"checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.018 s, sync=0.004 s, total=2.040 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=47513 kB; lsn=D/98000080, redo lsn=D/98000028",postgres,null,[],null
+f50aa57c-ee04-4329-9296-8d1a9b563f76,"""2026-09-25T20:31:12.607Z""",,,00000,2026-09-25T20:31:12.607000,success,checkpoint starting: time,postgres,null,[],null
+089ef92e-0d36-4324-8b1f-4f2c008e6ebf,"""2026-09-25T20:26:13.280Z""",,,00000,2026-09-25T20:26:13.280000,success,"checkpoint complete: wrote 7 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.614 s, sync=0.005 s, total=0.646 s; sync files=6, longest=0.004 s, average=0.001 s; distance=49151 kB, estimate=49151 kB; lsn=D/96000080, redo lsn=D/96000028",postgres,null,[],null
+234b19df-2f8a-4b07-af86-68a58910a57d,"""2026-09-25T20:26:12.635Z""",,,00000,2026-09-25T20:26:12.635000,success,checkpoint starting: time,postgres,null,[],null
+6af2906c-fb85-44b1-8940-3deb7187a017,"""2026-09-25T20:21:13.289Z""",,,00000,2026-09-25T20:21:13.289000,success,"checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.706 s, sync=0.005 s, total=0.728 s; sync files=6, longest=0.004 s, average=0.001 s; distance=32768 kB, estimate=47513 kB; lsn=D/930000B8, redo lsn=D/93000060",postgres,null,[],null
+1153e045-feee-49d0-8787-e919b291c8bd,"""2026-09-25T20:21:12.562Z""",,,00000,2026-09-25T20:21:12.562000,success,checkpoint starting: time,postgres,null,[],null
+b8b44187-87d5-46c7-af76-c9cfb94b62c5,"""2026-09-25T20:16:13.242Z""",,,00000,2026-09-25T20:16:13.242000,success,"checkpoint complete: wrote 11 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.010 s, sync=0.004 s, total=1.036 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/91000080, redo lsn=D/91000028",postgres,null,[],null
+871aa35f-2ac7-4dfc-8f79-c1ec17d688ac,"""2026-09-25T20:16:12.207Z""",,,00000,2026-09-25T20:16:12.207000,success,checkpoint starting: time,postgres,null,[],null
+8d5ae235-a499-4b0e-ae10-3b20607f690e,"""2026-09-25T20:11:12.884Z""",,,00000,2026-09-25T20:11:12.884000,success,"checkpoint complete: wrote 6 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.513 s, sync=0.005 s, total=0.548 s; sync files=6, longest=0.004 s, average=0.001 s; distance=32768 kB, estimate=47510 kB; lsn=D/8E000080, redo lsn=D/8E000028",postgres,null,[],null
+f3f458aa-3c32-48e0-afa3-a9c72d5ef649,"""2026-09-25T20:11:12.339Z""",,,00000,2026-09-25T20:11:12.339000,success,checkpoint starting: time,postgres,null,[],null
+2b14c898-b50a-4e27-a8e9-f354fd8876b5,"""2026-09-25T20:06:14.009Z""",,,00000,2026-09-25T20:06:14.009000,success,"checkpoint complete: wrote 19 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.837 s, sync=0.003 s, total=1.870 s; sync files=6, longest=0.002 s, average=0.001 s; distance=49148 kB, estimate=49148 kB; lsn=D/8C000080, redo lsn=D/8C000028",postgres,null,[],null
+a3c981de-2c5f-4321-817c-c47cd3768d33,"""2026-09-25T20:06:12.140Z""",,,00000,2026-09-25T20:06:12.140000,success,checkpoint starting: time,postgres,null,[],null
+307c37ec-fd79-478e-af3c-d9c47d0d0201,"""2026-09-25T20:01:12.780Z""",,,00000,2026-09-25T20:01:12.780000,success,"checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.709 s, sync=0.006 s, total=0.736 s; sync files=7, longest=0.005 s, average=0.001 s; distance=32771 kB, estimate=47513 kB; lsn=D/89001D88, redo lsn=D/89000FE0",postgres,null,[],null
+dab65fc3-e662-4be3-8bdc-47f29d0eb3f8,"""2026-09-25T20:01:12.045Z""",,,00000,2026-09-25T20:01:12.045000,success,checkpoint starting: time,postgres,null,[],null
+0869f323-d4a8-43ed-8d91-2b05ccb23a22,"""2026-09-25T19:56:22.321Z""",,,42703,2026-09-25T19:56:22.321000,error,column users.email does not exist,postgres,null,[],null
+822e69a0-b900-4ff5-bade-f75bed32a328,"""2026-09-25T19:56:14.794Z""",,,00000,2026-09-25T19:56:14.794000,success,"checkpoint complete: wrote 26 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.522 s, sync=0.004 s, total=2.551 s; sync files=11, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/87000080, redo lsn=D/87000028",postgres,null,[],null
+a0c4da14-63c8-4623-a961-966dd057df72,"""2026-09-25T19:56:12.244Z""",,,00000,2026-09-25T19:56:12.244000,success,checkpoint starting: time,postgres,null,[],null
+be70d762-03b9-43cd-8607-b501e6e65a43,"""2026-09-25T19:51:12.829Z""",,,00000,2026-09-25T19:51:12.829000,success,"checkpoint complete: wrote 7 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.607 s, sync=0.005 s, total=0.632 s; sync files=6, longest=0.004 s, average=0.001 s; distance=32768 kB, estimate=47498 kB; lsn=D/84000080, redo lsn=D/84000028",postgres,null,[],null
+62fd0e61-a964-4ba8-bd10-5f40ffe5e139,"""2026-09-25T19:51:12.198Z""",,,00000,2026-09-25T19:51:12.198000,success,checkpoint starting: time,postgres,null,[],null
+6fb13fbe-ba0c-4536-a44f-2ea30eca397a,"""2026-09-25T19:46:15.867Z""",,,00000,2026-09-25T19:46:15.867000,success,"checkpoint complete: wrote 39 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.820 s, sync=0.004 s, total=3.851 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49135 kB, estimate=49135 kB; lsn=D/820000B8, redo lsn=D/82000028",postgres,null,[],null
+5902acda-4211-46f8-be2b-49b66e05146f,"""2026-09-25T19:46:12.018Z""",,,00000,2026-09-25T19:46:12.018000,success,checkpoint starting: time,postgres,null,[],null
+bc257d1e-c58f-43f9-8784-75bd5551f57d,"""2026-09-25T19:41:15.623Z""",,,00000,2026-09-25T19:41:15.623000,success,"checkpoint complete: wrote 34 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.409 s, sync=0.004 s, total=3.446 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32778 kB, estimate=47505 kB; lsn=D/7F004460, redo lsn=D/7F004408",postgres,null,[],null
+1badb318-62c6-49ab-a8b9-be3393119d61,"""2026-09-25T19:41:12.179Z""",,,00000,2026-09-25T19:41:12.179000,success,checkpoint starting: time,postgres,null,[],null
+f397978e-61cd-493d-9170-a8ba4411512d,"""2026-09-25T19:36:13.810Z""",,,00000,2026-09-25T19:36:13.810000,success,"checkpoint complete: wrote 13 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.207 s, sync=0.005 s, total=1.236 s; sync files=6, longest=0.004 s, average=0.001 s; distance=49141 kB, estimate=49141 kB; lsn=D/7D002B68, redo lsn=D/7D001898",postgres,null,[],null
+80da9e2c-c24d-4d0d-98a2-db46d11be8a8,"""2026-09-25T19:36:12.576Z""",,,00000,2026-09-25T19:36:12.576000,success,checkpoint starting: time,postgres,null,[],null
+44d553cc-50a8-49b5-a4fa-4ed8bd3e6ab0,"""2026-09-25T19:31:14.225Z""",,,00000,2026-09-25T19:31:14.225000,success,"checkpoint complete: wrote 17 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.620 s, sync=0.004 s, total=1.651 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32784 kB, estimate=47504 kB; lsn=D/7A004310, redo lsn=D/7A0042B8",postgres,null,[],null
+1f0bd535-9c11-4c43-9f5e-405df7e2d7ad,"""2026-09-25T19:31:12.576Z""",,,00000,2026-09-25T19:31:12.576000,success,checkpoint starting: time,postgres,null,[],null
+0ba5460b-3830-4927-b52e-5ba7084220bd,"""2026-09-25T19:26:15.244Z""",,,00000,2026-09-25T19:26:15.244000,success,"checkpoint complete: wrote 26 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.430 s, sync=0.003 s, total=2.458 s; sync files=7, longest=0.002 s, average=0.001 s; distance=49140 kB, estimate=49140 kB; lsn=D/78000080, redo lsn=D/78000028",postgres,null,[],null
+03b4aca1-dda8-44d5-b21c-a21be0bb205f,"""2026-09-25T19:26:12.789Z""",,,00000,2026-09-25T19:26:12.789000,success,checkpoint starting: time,postgres,null,[],null
+6db82c5b-b7b8-4300-bc60-4d353861a55a,"""2026-09-25T19:21:15.341Z""",,,00000,2026-09-25T19:21:15.341000,success,"checkpoint complete: wrote 32 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.121 s, sync=0.004 s, total=3.148 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32779 kB, estimate=47507 kB; lsn=D/750030A0, redo lsn=D/75003010",postgres,null,[],null
+dbf185c3-f26d-4562-827a-40fc4c7515b9,"""2026-09-25T19:21:12.194Z""",,,00000,2026-09-25T19:21:12.194000,success,checkpoint starting: time,postgres,null,[],null
+b3a505c6-1676-48a8-9737-3a61dc48ee18,"""2026-09-25T19:18:49.243Z""",,,42703,2026-09-25T19:18:49.243000,error,column users.email does not exist,postgres,null,[],null
+aa8c3376-b0f6-495b-b442-6a3f54a303f2,"""2026-09-25T19:17:38.489Z""",,,42703,2026-09-25T19:17:38.489000,error,column users.email does not exist,postgres,null,[],null
+43186d41-52a6-4c5a-8e8d-c5b1c69e8d2d,"""2026-09-25T19:16:14.844Z""",,,00000,2026-09-25T19:16:14.844000,success,"checkpoint complete: wrote 27 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.622 s, sync=0.004 s, total=2.654 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49143 kB, estimate=49143 kB; lsn=D/73000080, redo lsn=D/73000028",postgres,null,[],null
+59407e7e-64e5-4436-94ac-f537c6c86f1a,"""2026-09-25T19:16:12.192Z""",,,00000,2026-09-25T19:16:12.192000,success,checkpoint starting: time,postgres,null,[],null
+493a5c3d-c290-45a9-9cb0-cbeb7b061502,"""2026-09-25T19:15:06.653Z""",,,42703,2026-09-25T19:15:06.653000,error,column users.email does not exist,postgres,null,[],null
+f1a0e6ae-37af-474a-8373-7c9af49146c9,"""2026-09-25T19:14:57.592Z""",,,42703,2026-09-25T19:14:57.592000,error,column users.email does not exist,postgres,null,[],null
+f73ce2ad-a757-4ef5-9302-49c2b7f01404,"""2026-09-25T19:14:57.137Z""",,,42703,2026-09-25T19:14:57.137000,error,column users.email does not exist,postgres,null,[],null
+20e146da-9a99-490a-9d85-4dbb1ed02688,"""2026-09-25T19:11:15.789Z""",,,00000,2026-09-25T19:11:15.789000,success,"checkpoint complete: wrote 34 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.320 s, sync=0.004 s, total=3.342 s; sync files=12, longest=0.003 s, average=0.001 s; distance=32776 kB, estimate=43376 kB; lsn=D/700021B8, redo lsn=D/70002160",postgres,null,[],null
+1b5057d0-8a62-4523-b567-e3c75fdf5d72,"""2026-09-25T19:11:12.448Z""",,,00000,2026-09-25T19:11:12.448000,success,checkpoint starting: time,postgres,null,[],null
+2cc6cf3b-7094-49ff-8fdf-eb0c640db731,"""2026-09-25T19:06:14.992Z""",,,00000,2026-09-25T19:06:14.992000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.348 s, sync=0.004 s, total=2.382 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=44554 kB; lsn=D/6E0000B8, redo lsn=D/6E000060",postgres,null,[],null
+cdbee787-419e-4b52-8f28-a5469dfb15c8,"""2026-09-25T19:06:12.611Z""",,,00000,2026-09-25T19:06:12.611000,success,checkpoint starting: time,postgres,null,[],null
+435c948f-966a-4145-bc4a-260fb242f66e,"""2026-09-25T19:05:29.317Z""",,,42703,2026-09-25T19:05:29.317000,error,column users.email does not exist,postgres,null,[],null
+83f93a75-672a-45fa-8c8f-c8bd48a991c3,"""2026-09-25T18:51:15.760Z""",,,00000,2026-09-25T18:51:15.760000,success,"checkpoint complete: wrote 33 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=3.220 s, sync=0.004 s, total=3.246 s; sync files=14, longest=0.003 s, average=0.001 s; distance=16379 kB, estimate=45863 kB; lsn=D/6C000080, redo lsn=D/6C000028",postgres,null,[],null
+806d3462-154f-44bf-882d-b0388d987b8b,"""2026-09-25T18:51:12.515Z""",,,00000,2026-09-25T18:51:12.515000,success,checkpoint starting: time,postgres,null,[],null
+9e69dce4-9e46-41a3-bbee-cbd7d6c83d05,"""2026-09-25T18:46:16.216Z""",,,00000,2026-09-25T18:46:16.216000,success,"checkpoint complete: wrote 32 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.238 s, sync=0.004 s, total=3.272 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49139 kB, estimate=49139 kB; lsn=D/6B003598, redo lsn=D/6B001080",postgres,null,[],null
+3b4a1f7a-1ce3-4e51-9645-1ca66e7f5fc6,"""2026-09-25T18:46:12.946Z""",,,00000,2026-09-25T18:46:12.946000,success,checkpoint starting: time,postgres,null,[],null
+8d766f23-33a0-4b61-8990-72091204e692,"""2026-09-25T18:41:14.346Z""",,,00000,2026-09-25T18:41:14.346000,success,"checkpoint complete: wrote 18 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.708 s, sync=0.003 s, total=1.732 s; sync files=6, longest=0.002 s, average=0.001 s; distance=32783 kB, estimate=47515 kB; lsn=D/68004208, redo lsn=D/680041B0",postgres,null,[],null
+4c5a1fff-a52c-4dc8-bd12-33415f84b89b,"""2026-09-25T18:41:12.616Z""",,,00000,2026-09-25T18:41:12.616000,success,checkpoint starting: time,postgres,null,[],null
+6a37b9c5-8ca4-4942-ad5b-233b7cfc4bcc,"""2026-09-25T18:36:16.296Z""",,,00000,2026-09-25T18:36:16.296000,success,"checkpoint complete: wrote 37 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.635 s, sync=0.007 s, total=3.664 s; sync files=19, longest=0.004 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/66002318, redo lsn=D/660002F8",postgres,null,[],null
+6d31534d-55f4-4bd8-a4b5-aa251a971ffe,"""2026-09-25T18:36:12.633Z""",,,00000,2026-09-25T18:36:12.633000,success,checkpoint starting: time,postgres,null,[],null
+8c4fa474-a500-41f2-9359-3952d1ec4235,"""2026-09-25T18:31:13.306Z""",,,00000,2026-09-25T18:31:13.306000,success,"checkpoint complete: wrote 8 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.721 s, sync=0.002 s, total=0.749 s; sync files=6, longest=0.002 s, average=0.001 s; distance=32767 kB, estimate=47513 kB; lsn=D/63000080, redo lsn=D/63000028",postgres,null,[],null
+f1c61b06-7eca-4775-b8e7-305188bf3081,"""2026-09-25T18:31:12.558Z""",,,00000,2026-09-25T18:31:12.558000,success,checkpoint starting: time,postgres,null,[],null
+6be34cc5-96f6-463a-acc5-a9aa2f405045,"""2026-09-25T18:26:13.172Z""",,,00000,2026-09-25T18:26:13.172000,success,"checkpoint complete: wrote 9 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=0.814 s, sync=0.002 s, total=0.834 s; sync files=6, longest=0.002 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/610000B8, redo lsn=D/61000060",postgres,null,[],null
+1e5606f2-6b1f-4313-a27f-15d55777031b,"""2026-09-25T18:26:12.338Z""",,,00000,2026-09-25T18:26:12.338000,success,checkpoint starting: time,postgres,null,[],null
+e629a487-add6-46fd-aee1-343e27f7f5ce,"""2026-09-25T18:21:12.969Z""",,,00000,2026-09-25T18:21:12.969000,success,"checkpoint complete: wrote 9 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.808 s, sync=0.006 s, total=0.846 s; sync files=6, longest=0.004 s, average=0.001 s; distance=32768 kB, estimate=44703 kB; lsn=D/5E000080, redo lsn=D/5E000028",postgres,null,[],null
+7fa555e1-18bf-44ab-83cf-f324a01ded7f,"""2026-09-25T18:21:12.124Z""",,,00000,2026-09-25T18:21:12.124000,success,checkpoint starting: time,postgres,null,[],null
+3756650c-332b-4728-861d-7433cef67208,"""2026-09-25T18:16:13.796Z""",,,00000,2026-09-25T18:16:13.796000,success,"checkpoint complete: wrote 11 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.012 s, sync=0.005 s, total=1.039 s; sync files=7, longest=0.004 s, average=0.001 s; distance=32761 kB, estimate=46029 kB; lsn=D/5C000080, redo lsn=D/5C000028",postgres,null,[],null
+19a4360c-11f3-4aaf-8293-1513fc3238ea,"""2026-09-25T18:16:12.759Z""",,,00000,2026-09-25T18:16:12.759000,success,checkpoint starting: time,postgres,null,[],null
+7e909831-7fa9-4e83-a288-0ac424113cfc,"""2026-09-25T18:11:13.484Z""",,,00000,2026-09-25T18:11:13.484000,success,"checkpoint complete: wrote 13 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.212 s, sync=0.004 s, total=1.244 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32773 kB, estimate=47503 kB; lsn=D/5A001C50, redo lsn=D/5A001BF8",postgres,null,[],null
+25cba03e-0fdb-4491-b8b5-e6f50c1cff64,"""2026-09-25T18:11:12.241Z""",,,00000,2026-09-25T18:11:12.241000,success,checkpoint starting: time,postgres,null,[],null
+2fe632af-c72c-4922-b33d-23d65133743e,"""2026-09-25T18:06:16.966Z""",,,00000,2026-09-25T18:06:16.966000,success,"checkpoint complete: wrote 44 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.349 s, sync=0.002 s, total=4.367 s; sync files=17, longest=0.001 s, average=0.001 s; distance=49140 kB, estimate=49140 kB; lsn=D/580005B8, redo lsn=D/58000528",postgres,null,[],null
+03dc5d17-e409-44c1-b0dc-e1e86dccfad1,"""2026-09-25T18:06:12.599Z""",,,00000,2026-09-25T18:06:12.599000,success,checkpoint starting: time,postgres,null,[],null
+9c72a7bd-fd8d-4b51-978e-b72e3f072acc,"""2026-09-25T18:02:55.989Z""",,,23505,2026-09-25T18:02:55.989000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+c680d443-97e5-4541-8c1e-b54c81f8114c,"""2026-09-25T18:01:14.205Z""",,,00000,2026-09-25T18:01:14.205000,success,"checkpoint complete: wrote 16 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.510 s, sync=0.004 s, total=1.534 s; sync files=6, longest=0.002 s, average=0.001 s; distance=32777 kB, estimate=47342 kB; lsn=D/55003570, redo lsn=D/55003518",postgres,null,[],null
+4232273b-06bf-4b10-9e85-07641c04b29b,"""2026-09-25T18:01:12.672Z""",,,00000,2026-09-25T18:01:12.672000,success,checkpoint starting: time,postgres,null,[],null
+f81619de-fc47-463f-ab51-fde71e2637c3,"""2026-09-25T17:56:13.335Z""",,,00000,2026-09-25T17:56:13.335000,success,"checkpoint complete: wrote 13 buffers (0.0%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.243 s, sync=0.003 s, total=1.277 s; sync files=6, longest=0.002 s, average=0.001 s; distance=48960 kB, estimate=48960 kB; lsn=D/53001168, redo lsn=D/53001110",postgres,null,[],null
+64f5b8f8-0a77-4988-b6e0-0c21098eacf4,"""2026-09-25T17:56:12.059Z""",,,00000,2026-09-25T17:56:12.059000,success,checkpoint starting: time,postgres,null,[],null
+4d3ce718-5ec7-497b-ad56-6ae071746af4,"""2026-09-25T17:51:16.663Z""",,,00000,2026-09-25T17:51:16.663000,success,"checkpoint complete: wrote 44 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.328 s, sync=0.004 s, total=4.351 s; sync files=18, longest=0.003 s, average=0.001 s; distance=32963 kB, estimate=47533 kB; lsn=D/50030FF8, redo lsn=D/50030FA0",postgres,null,[],null
+6518ff35-73f8-4d4c-b2d4-9ba8d070a821,"""2026-09-25T17:51:12.312Z""",,,00000,2026-09-25T17:51:12.312000,success,checkpoint starting: time,postgres,null,[],null
+6f928f14-9458-4890-8e28-6ccf89a8d1ea,"""2026-09-25T17:46:14.944Z""",,,00000,2026-09-25T17:46:14.944000,success,"checkpoint complete: wrote 26 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.521 s, sync=0.004 s, total=2.551 s; sync files=11, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/4E000080, redo lsn=D/4E000028",postgres,null,[],null
+cffb5eaa-047a-4d7d-9fc0-2551d16feaea,"""2026-09-25T17:46:12.393Z""",,,00000,2026-09-25T17:46:12.393000,success,checkpoint starting: time,postgres,null,[],null
+efe4cf9e-20cb-418c-a4da-25d99c00504c,"""2026-09-25T17:41:50.112Z""",,,42703,2026-09-25T17:41:50.112000,error,column users.email does not exist,postgres,null,[],null
+ac7b0e71-b784-457b-b47a-43de0f38a927,"""2026-09-25T17:41:14.073Z""",,,00000,2026-09-25T17:41:14.073000,success,"checkpoint complete: wrote 19 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.823 s, sync=0.004 s, total=1.850 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=47513 kB; lsn=D/4B000080, redo lsn=D/4B000028",postgres,null,[],null
+2d953b44-900c-4760-8694-2180a61b3a6e,"""2026-09-25T17:41:12.225Z""",,,00000,2026-09-25T17:41:12.225000,success,checkpoint starting: time,postgres,null,[],null
+9efed253-1c55-4312-afa5-aa967204d532,"""2026-09-25T17:36:14.864Z""",,,00000,2026-09-25T17:36:14.864000,success,"checkpoint complete: wrote 24 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.322 s, sync=0.004 s, total=2.357 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=D/49000080, redo lsn=D/49000028",postgres,null,[],null
+8ed658b6-a979-4c8b-947c-129a03e19231,"""2026-09-25T17:36:12.508Z""",,,00000,2026-09-25T17:36:12.508000,success,checkpoint starting: time,postgres,null,[],null
+81259edc-d76d-4c1f-9b83-b2d7e03716e8,"""2026-09-25T17:33:05.368Z""",,,42703,2026-09-25T17:33:05.368000,error,column users.email does not exist,postgres,null,[],null
+a0a1bac1-9e5d-480d-91df-a45e0634e98c,"""2026-09-25T17:32:57.149Z""",,,42703,2026-09-25T17:32:57.149000,error,column users.email does not exist,postgres,null,[],null
+846a02d5-5442-4b8c-9190-72b14758f2a0,"""2026-09-25T17:32:56.466Z""",,,42703,2026-09-25T17:32:56.466000,error,column users.email does not exist,postgres,null,[],null
+571df8d4-4664-49ea-bc89-3ab1618305b3,"""2026-09-25T17:31:14.115Z""",,,00000,2026-09-25T17:31:14.115000,success,"checkpoint complete: wrote 17 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.618 s, sync=0.004 s, total=1.644 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=47500 kB; lsn=D/46000080, redo lsn=D/46000028",postgres,null,[],null
+06fb1fd8-3610-4613-a99f-fe0008bf35d1,"""2026-09-25T17:31:12.473Z""",,,00000,2026-09-25T17:31:12.473000,success,checkpoint starting: time,postgres,null,[],null
+eb921387-caed-480d-bc86-c962f71df804,"""2026-09-25T17:26:14.148Z""",,,00000,2026-09-25T17:26:14.148000,success,"checkpoint complete: wrote 18 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.719 s, sync=0.004 s, total=1.748 s; sync files=7, longest=0.003 s, average=0.001 s; distance=49137 kB, estimate=49137 kB; lsn=D/44000080, redo lsn=D/44000028",postgres,null,[],null
+71823496-13cd-4f6d-baff-d16fe56978f2,"""2026-09-25T17:26:12.401Z""",,,00000,2026-09-25T17:26:12.401000,success,checkpoint starting: time,postgres,null,[],null
+13ecaa0d-dbed-4b1c-85c6-f267e0a8467b,"""2026-09-25T17:21:15.031Z""",,,00000,2026-09-25T17:21:15.031000,success,"checkpoint complete: wrote 28 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.714 s, sync=0.004 s, total=2.735 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32782 kB, estimate=47465 kB; lsn=D/41003B30, redo lsn=D/41003AD8",postgres,null,[],null
+79c9e590-17ce-445d-b553-27cb7145521d,"""2026-09-25T17:21:12.297Z""",,,00000,2026-09-25T17:21:12.297000,success,checkpoint starting: time,postgres,null,[],null
+9fe37fa6-a246-4755-9c9d-f46835065229,"""2026-09-25T17:16:15.009Z""",,,00000,2026-09-25T17:16:15.009000,success,"checkpoint complete: wrote 29 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.844 s, sync=0.004 s, total=2.872 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49096 kB, estimate=49096 kB; lsn=D/3F000080, redo lsn=D/3F000028",postgres,null,[],null
+d16eb0ba-b772-41dc-80fd-db6643735b94,"""2026-09-25T17:16:12.138Z""",,,00000,2026-09-25T17:16:12.138000,success,checkpoint starting: time,postgres,null,[],null
+2db269b8-9f10-4636-a867-c5cb66aefc37,"""2026-09-25T17:11:14.736Z""",,,00000,2026-09-25T17:11:14.736000,success,"checkpoint complete: wrote 24 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.326 s, sync=0.004 s, total=2.351 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32823 kB, estimate=44671 kB; lsn=D/3C00DEE0, redo lsn=D/3C00DE88",postgres,null,[],null
+6802b45f-5bfc-40c2-9c32-4d540e5e394f,"""2026-09-25T17:11:12.387Z""",,,00000,2026-09-25T17:11:12.387000,success,checkpoint starting: time,postgres,null,[],null
+8fbe41ca-587e-48aa-9f6b-3b51ba6344e2,"""2026-09-25T17:10:22.614Z""",,,42703,2026-09-25T17:10:22.614000,error,column users.email does not exist,postgres,null,[],null
+be261de6-d6da-47f0-80d7-fd7f737da758,"""2026-09-25T17:10:21.741Z""",,,42703,2026-09-25T17:10:21.741000,error,column users.email does not exist,postgres,null,[],null
+9b3511c9-b11a-401a-ba70-c17a38b48618,"""2026-09-25T17:08:40.890Z""",,,42703,2026-09-25T17:08:40.890000,error,column users.email does not exist,postgres,null,[],null
+d20822d0-cc39-4970-ac36-f05e9c7f60c5,"""2026-09-25T16:56:13.583Z""",,,00000,2026-09-25T16:56:13.583000,success,"checkpoint complete: wrote 12 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.114 s, sync=0.004 s, total=1.135 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32758 kB, estimate=45987 kB; lsn=D/3A000080, redo lsn=D/3A000028",postgres,null,[],null
+347d0b9f-b7f4-4295-b429-20e2847307f4,"""2026-09-25T16:56:12.449Z""",,,00000,2026-09-25T16:56:12.449000,success,checkpoint starting: time,postgres,null,[],null
+fa5003a5-c3fb-46b8-9fd0-86e5397046c8,"""2026-09-25T16:51:16.101Z""",,,00000,2026-09-25T16:51:16.101000,success,"checkpoint complete: wrote 36 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.570 s, sync=0.007 s, total=3.621 s; sync files=14, longest=0.006 s, average=0.001 s; distance=32773 kB, estimate=47457 kB; lsn=D/380024B8, redo lsn=D/38002460",postgres,null,[],null
+93dab8db-fb54-4ba8-8c04-f6144aabf4f0,"""2026-09-25T16:51:12.479Z""",,,00000,2026-09-25T16:51:12.479000,success,checkpoint starting: time,postgres,null,[],null
+fbeb87aa-6f9f-4a6b-b0a7-192cec9acb6f,"""2026-09-25T16:46:58.116Z""",,,42703,2026-09-25T16:46:58.116000,error,column users.email does not exist,postgres,null,[],null
+19aee3d8-6c23-4704-8e9e-ddfdfa83b62e,"""2026-09-25T16:46:15.135Z""",,,00000,2026-09-25T16:46:15.135000,success,"checkpoint complete: wrote 22 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.115 s, sync=0.004 s, total=2.144 s; sync files=7, longest=0.003 s, average=0.001 s; distance=49089 kB, estimate=49089 kB; lsn=D/36000D48, redo lsn=D/36000CF0",postgres,null,[],null
+940801e0-9707-4296-8422-d7e47ab38d37,"""2026-09-25T16:46:12.991Z""",,,00000,2026-09-25T16:46:12.991000,success,checkpoint starting: time,postgres,null,[],null
+944a0019-a316-44b6-b090-95c5d61834e6,"""2026-09-25T16:41:16.525Z""",,,00000,2026-09-25T16:41:16.525000,success,"checkpoint complete: wrote 39 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.945 s, sync=0.004 s, total=4.013 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32832 kB, estimate=47446 kB; lsn=D/330107B0, redo lsn=D/33010720",postgres,null,[],null
+fd863a7e-ba78-49b4-acaf-a8d8f06d8358,"""2026-09-25T16:41:12.521Z""",,,00000,2026-09-25T16:41:12.521000,success,checkpoint starting: time,postgres,null,[],null
+62cc0616-f31d-4517-bb1b-fd9529092c6a,"""2026-09-25T16:40:30.702Z""",,,42703,2026-09-25T16:40:30.702000,error,column users.email does not exist,postgres,null,[],null
+7743b188-0c60-4878-9bef-566bbe948994,"""2026-09-25T16:36:22.173Z""",,,00000,2026-09-25T16:36:22.173000,success,"checkpoint complete: wrote 92 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=9.164 s, sync=0.004 s, total=9.201 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49070 kB, estimate=49070 kB; lsn=D/310004B8, redo lsn=D/31000460",postgres,null,[],null
+2ff004ec-37f5-4844-b6d2-6b4defcad714,"""2026-09-25T16:36:12.974Z""",,,00000,2026-09-25T16:36:12.974000,success,checkpoint starting: time,postgres,null,[],null
+52a08db8-b8d5-4dd6-ad72-8555990bf12b,"""2026-09-25T16:31:17.578Z""",,,00000,2026-09-25T16:31:17.578000,success,"checkpoint complete: wrote 51 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=5.060 s, sync=0.005 s, total=5.092 s; sync files=15, longest=0.004 s, average=0.001 s; distance=32850 kB, estimate=44699 kB; lsn=D/2E014CB0, redo lsn=D/2E014C58",postgres,null,[],null
+8f2a723f-95b7-42aa-b71e-d1f27be76847,"""2026-09-25T16:31:12.488Z""",,,00000,2026-09-25T16:31:12.488000,success,checkpoint starting: time,postgres,null,[],null
+6bf5105f-1fcc-4c87-b5e5-27201a72d437,"""2026-09-25T16:26:14.161Z""",,,00000,2026-09-25T16:26:14.161000,success,"checkpoint complete: wrote 18 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.714 s, sync=0.004 s, total=1.736 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32758 kB, estimate=46016 kB; lsn=D/2C0000F0, redo lsn=D/2C000060",postgres,null,[],null
+762a83fe-e338-4d60-af73-7c9f080415d2,"""2026-09-25T16:26:12.426Z""",,,00000,2026-09-25T16:26:12.426000,success,checkpoint starting: time,postgres,null,[],null
+dc2fd8e9-318a-4072-ba2b-ffda8d531619,"""2026-09-25T16:21:14.062Z""",,,00000,2026-09-25T16:21:14.062000,success,"checkpoint complete: wrote 14 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.310 s, sync=0.004 s, total=1.337 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32777 kB, estimate=47489 kB; lsn=D/2A002838, redo lsn=D/2A0027E0",postgres,null,[],null
+d5520953-57fb-4e2a-94ab-318ad02925d2,"""2026-09-25T16:21:12.725Z""",,,00000,2026-09-25T16:21:12.725000,success,checkpoint starting: time,postgres,null,[],null
+63f4909c-66c0-473a-90ed-701b0a8352c4,"""2026-09-25T16:16:16.411Z""",,,00000,2026-09-25T16:16:16.411000,success,"checkpoint complete: wrote 35 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.449 s, sync=0.004 s, total=3.477 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49124 kB, estimate=49124 kB; lsn=D/28000080, redo lsn=D/28000028",postgres,null,[],null
+4c048f43-d217-4d30-b8d6-26fb8f79977c,"""2026-09-25T16:16:12.933Z""",,,00000,2026-09-25T16:16:12.933000,success,checkpoint starting: time,postgres,null,[],null
+635f85b5-7f7f-42a5-a9e0-545178c7600b,"""2026-09-25T16:11:54.558Z""",,,42703,2026-09-25T16:11:54.558000,error,column users.email does not exist,postgres,null,[],null
+3a7d1a07-0de2-4ea1-aeee-dd3fc8366ea8,"""2026-09-25T16:11:17.497Z""",,,00000,2026-09-25T16:11:17.497000,success,"checkpoint complete: wrote 55 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=5.428 s, sync=0.005 s, total=5.454 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32737 kB, estimate=47548 kB; lsn=D/25009E90, redo lsn=D/25006F78",postgres,null,[],null
+22da8bbd-fb47-4899-bc86-1317df44b31a,"""2026-09-25T16:11:12.043Z""",,,00000,2026-09-25T16:11:12.043000,success,checkpoint starting: time,postgres,null,[],null
+8964261e-899a-4209-af97-5d0d161435ef,"""2026-09-25T16:06:15.673Z""",,,00000,2026-09-25T16:06:15.673000,success,"checkpoint complete: wrote 47 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.636 s, sync=0.004 s, total=4.669 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49194 kB, estimate=49194 kB; lsn=D/23010108, redo lsn=D/2300E828",postgres,null,[],null
+6797253e-5eab-4bbb-9dab-16184eb1d055,"""2026-09-25T16:06:11.008Z""",,,00000,2026-09-25T16:06:11.008000,success,checkpoint starting: time,postgres,null,[],null
+80e55fea-874b-4e02-bd7c-81b588d89fa5,"""2026-09-25T16:01:13.607Z""",,,00000,2026-09-25T16:01:13.607000,success,"checkpoint complete: wrote 33 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.217 s, sync=0.004 s, total=3.239 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32783 kB, estimate=44697 kB; lsn=D/20005EA8, redo lsn=D/20003ED8",postgres,null,[],null
+5f3d5d37-cac9-49e0-87e6-57d0fe09dea9,"""2026-09-25T16:01:10.369Z""",,,00000,2026-09-25T16:01:10.369000,success,checkpoint starting: time,postgres,null,[],null
+d0945763-c559-4026-9019-903cab46edb5,"""2026-09-25T15:56:12.043Z""",,,00000,2026-09-25T15:56:12.043000,success,"checkpoint complete: wrote 15 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.411 s, sync=0.004 s, total=1.440 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32700 kB, estimate=46021 kB; lsn=D/1E000080, redo lsn=D/1E000028",postgres,null,[],null
+1d982b11-d590-4878-ae16-01d6806ac7bd,"""2026-09-25T15:56:10.604Z""",,,00000,2026-09-25T15:56:10.604000,success,checkpoint starting: time,postgres,null,[],null
+7c002f0d-72ca-4830-a5c5-d204a74a5e7f,"""2026-09-25T15:51:17.265Z""",,,00000,2026-09-25T15:51:17.265000,success,"checkpoint complete: wrote 69 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=6.899 s, sync=0.004 s, total=6.949 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32835 kB, estimate=47501 kB; lsn=D/1C010D20, redo lsn=D/1C010CC8",postgres,null,[],null
+f9f8eec2-9ec9-4054-966b-a6dc7a1202e3,"""2026-09-25T15:51:10.321Z""",,,00000,2026-09-25T15:51:10.321000,success,checkpoint starting: time,postgres,null,[],null
+4129c3a7-437f-4263-9cc7-5a1ccce1e179,"""2026-09-25T15:48:44.636Z""",,,42703,2026-09-25T15:48:44.636000,error,column users.email does not exist,postgres,null,[],null
+8074d9da-1f6c-4084-985b-d4f25d438e31,"""2026-09-25T15:48:43.875Z""",,,42703,2026-09-25T15:48:43.875000,error,column users.email does not exist,postgres,null,[],null
+17a3b903-3ddb-49fe-8d61-94aa4784b0ed,"""2026-09-25T15:46:14.936Z""",,,00000,2026-09-25T15:46:14.936000,success,"checkpoint complete: wrote 41 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.027 s, sync=0.004 s, total=4.057 s; sync files=14, longest=0.003 s, average=0.001 s; distance=49131 kB, estimate=49131 kB; lsn=D/1A000080, redo lsn=D/1A000028",postgres,null,[],null
+7b565a12-5dcf-4d46-891e-f31daac83493,"""2026-09-25T15:46:10.880Z""",,,00000,2026-09-25T15:46:10.880000,success,checkpoint starting: time,postgres,null,[],null
+1bc5913b-6920-412e-a3e7-f2f0a67c4e25,"""2026-09-25T15:41:13.528Z""",,,00000,2026-09-25T15:41:13.528000,success,"checkpoint complete: wrote 30 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.821 s, sync=0.004 s, total=2.845 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32788 kB, estimate=47496 kB; lsn=D/170052E8, redo lsn=D/17005290",postgres,null,[],null
+52a6abc1-6ce7-4d91-9c3b-6ee83edbbcd2,"""2026-09-25T15:41:10.684Z""",,,00000,2026-09-25T15:41:10.684000,success,checkpoint starting: time,postgres,null,[],null
+de202242-703d-4ac5-a8b9-c729bc3dba62,"""2026-09-25T15:36:15.322Z""",,,00000,2026-09-25T15:36:15.322000,success,"checkpoint complete: wrote 46 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.642 s, sync=0.004 s, total=4.678 s; sync files=10, longest=0.003 s, average=0.001 s; distance=49130 kB, estimate=49130 kB; lsn=D/150000F0, redo lsn=D/15000060",postgres,null,[],null
+2ce41d3f-9c5c-48bb-ab64-8bf2d51c8307,"""2026-09-25T15:36:10.645Z""",,,00000,2026-09-25T15:36:10.645000,success,checkpoint starting: time,postgres,null,[],null
+528c85df-2efc-4c66-8ec0-23cf59dc624d,"""2026-09-25T15:35:08.111Z""",,,42703,2026-09-25T15:35:08.111000,error,column users.email does not exist,postgres,null,[],null
+7aa2e995-0d38-470c-899e-048982de1d0f,"""2026-09-25T15:31:13.228Z""",,,00000,2026-09-25T15:31:13.228000,success,"checkpoint complete: wrote 25 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.412 s, sync=0.004 s, total=2.433 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32782 kB, estimate=47509 kB; lsn=D/120055B8, redo lsn=D/12005560",postgres,null,[],null
+7f3a53a2-86f6-4eaf-9cf6-ccd110615557,"""2026-09-25T15:31:10.795Z""",,,00000,2026-09-25T15:31:10.795000,success,checkpoint starting: time,postgres,null,[],null
+902e5461-e31f-4859-bb7f-ff6379478c58,"""2026-09-25T15:26:19.450Z""",,,00000,2026-09-25T15:26:19.450000,success,"checkpoint complete: wrote 87 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=8.680 s, sync=0.004 s, total=8.713 s; sync files=23, longest=0.003 s, average=0.001 s; distance=49146 kB, estimate=49146 kB; lsn=D/10001D78, redo lsn=D/10001D20",postgres,null,[],null
+ea983b0d-72df-4217-bc0c-30f22b08ca2b,"""2026-09-25T15:26:10.737Z""",,,00000,2026-09-25T15:26:10.737000,success,checkpoint starting: time,postgres,null,[],null
+654a9d93-d1a0-45bb-887c-2a7a5650b0d9,"""2026-09-25T15:21:13.371Z""",,,00000,2026-09-25T15:21:13.371000,success,"checkpoint complete: wrote 25 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.413 s, sync=0.002 s, total=2.432 s; sync files=7, longest=0.002 s, average=0.001 s; distance=32780 kB, estimate=47491 kB; lsn=D/D003440, redo lsn=D/D0033E8",postgres,null,[],null
+5cf9c77b-9c75-4fab-bbcb-bebe904c8dbb,"""2026-09-25T15:21:10.940Z""",,,00000,2026-09-25T15:21:10.940000,success,checkpoint starting: time,postgres,null,[],null
+e2ebaea8-b899-4d31-be18-113ae4b007dc,"""2026-09-25T15:16:12.630Z""",,,00000,2026-09-25T15:16:12.630000,success,"checkpoint complete: wrote 25 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.412 s, sync=0.003 s, total=2.437 s; sync files=8, longest=0.002 s, average=0.001 s; distance=49125 kB, estimate=49125 kB; lsn=D/B000080, redo lsn=D/B000028",postgres,null,[],null
+57353b67-04f4-46f6-9673-f8d00596077b,"""2026-09-25T15:16:10.194Z""",,,00000,2026-09-25T15:16:10.194000,success,checkpoint starting: time,postgres,null,[],null
+a72a2df2-6bc8-41b5-9f0b-fab4e105d35a,"""2026-09-25T15:11:15.821Z""",,,00000,2026-09-25T15:11:15.821000,success,"checkpoint complete: wrote 49 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.923 s, sync=0.004 s, total=4.982 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32794 kB, estimate=47516 kB; lsn=D/80068E8, redo lsn=D/8006890",postgres,null,[],null
+268a3e19-7458-44d1-83cc-0e2a215645dc,"""2026-09-25T15:11:10.845Z""",,,00000,2026-09-25T15:11:10.845000,success,checkpoint starting: time,postgres,null,[],null
+cd052a0c-02ce-4949-b29d-e4941e658d20,"""2026-09-25T15:08:32.668Z""",,,42703,2026-09-25T15:08:32.668000,error,column users.email does not exist,postgres,null,[],null
+176376e5-6045-43d8-a72a-5fd346cfea1b,"""2026-09-25T15:08:26.878Z""",,,42703,2026-09-25T15:08:26.878000,error,column users.email does not exist,postgres,null,[],null
+020c6231-14b0-4fd6-b063-2af61941562e,"""2026-09-25T15:08:26.188Z""",,,42703,2026-09-25T15:08:26.188000,error,column users.email does not exist,postgres,null,[],null
+1851ef9a-811d-46d3-9c7e-c376b08927c7,"""2026-09-25T15:08:09.197Z""",,,42703,2026-09-25T15:08:09.197000,error,column users.email does not exist,postgres,null,[],null
+1cbabde6-8e58-4cdb-bf7c-badc8f30d8f3,"""2026-09-25T15:08:07.929Z""",,,42703,2026-09-25T15:08:07.929000,error,column users.email does not exist,postgres,null,[],null
+f8ada40f-4f58-498c-868f-4e4919d3a9bc,"""2026-09-25T15:06:17.493Z""",,,00000,2026-09-25T15:06:17.493000,success,"checkpoint complete: wrote 71 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.057 s, sync=0.005 s, total=7.096 s; sync files=24, longest=0.004 s, average=0.001 s; distance=49151 kB, estimate=49151 kB; lsn=D/60000F0, redo lsn=D/6000060",postgres,null,[],null
+313b335d-783b-4e03-8aee-8a7fb6c11666,"""2026-09-25T15:06:10.401Z""",,,00000,2026-09-25T15:06:10.401000,success,checkpoint starting: time,postgres,null,[],null
+8c46d023-9f45-411b-8142-f420fba350a3,"""2026-09-25T15:04:36.666Z""",,,42703,2026-09-25T15:04:36.666000,error,column users.email does not exist,postgres,null,[],null
+95ab0fa3-85c5-4ee0-923e-7ce2a48c72f9,"""2026-09-25T15:03:51.516Z""",,,42703,2026-09-25T15:03:51.516000,error,column users.email does not exist,postgres,null,[],null
+013cc266-9609-4d9c-a690-6af86cadc426,"""2026-09-25T15:01:13.891Z""",,,42703,2026-09-25T15:01:13.891000,error,column users.email does not exist,postgres,null,[],null
+d0f3bc79-e4b3-4d06-9901-6114c44c1693,"""2026-09-25T15:01:10.478Z""",,,00000,2026-09-25T15:01:10.478000,success,checkpoint starting: time,postgres,null,[],null
+8f5f3319-f80f-45bf-82fb-4f6fe0d8efd8,"""2026-09-25T14:56:12.122Z""",,,00000,2026-09-25T14:56:12.122000,success,"checkpoint complete: wrote 11 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.109 s, sync=0.005 s, total=1.140 s; sync files=6, longest=0.004 s, average=0.001 s; distance=32760 kB, estimate=46008 kB; lsn=D/10023C0, redo lsn=D/1000D50",postgres,null,[],null
+38e6a754-e3b1-47e3-978b-e0fada81553f,"""2026-09-25T14:56:10.983Z""",,,00000,2026-09-25T14:56:10.983000,success,checkpoint starting: time,postgres,null,[],null
+6193a4d5-da66-4ad6-81db-bef216ab46c8,"""2026-09-25T14:51:12.604Z""",,,00000,2026-09-25T14:51:12.604000,success,"checkpoint complete: wrote 19 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.810 s, sync=0.004 s, total=1.836 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32778 kB, estimate=47480 kB; lsn=C/FF002A08, redo lsn=C/FF002978",postgres,null,[],null
+22711901-186f-4abb-99c5-1c784c2c30c4,"""2026-09-25T14:51:10.770Z""",,,00000,2026-09-25T14:51:10.770000,success,checkpoint starting: time,postgres,null,[],null
+6c53e9cc-de7a-446a-b3a4-f3072ecbe53f,"""2026-09-25T14:46:12.435Z""",,,00000,2026-09-25T14:46:12.435000,success,"checkpoint complete: wrote 24 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.319 s, sync=0.004 s, total=2.347 s; sync files=6, longest=0.003 s, average=0.001 s; distance=49113 kB, estimate=49113 kB; lsn=C/FD000080, redo lsn=C/FD000028",postgres,null,[],null
+c0496e30-2681-43ea-87d4-a2c5397e0a2c,"""2026-09-25T14:46:10.089Z""",,,00000,2026-09-25T14:46:10.089000,success,checkpoint starting: time,postgres,null,[],null
+1febf026-181d-4360-88e9-695a7c023e3c,"""2026-09-25T14:41:16.736Z""",,,00000,2026-09-25T14:41:16.736000,success,"checkpoint complete: wrote 59 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=5.832 s, sync=0.003 s, total=5.856 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32806 kB, estimate=47498 kB; lsn=C/FA00B768, redo lsn=C/FA009890",postgres,null,[],null
+d839ace0-cbcc-438d-b513-8948ea9a2f16,"""2026-09-25T14:41:10.881Z""",,,00000,2026-09-25T14:41:10.881000,success,checkpoint starting: time,postgres,null,[],null
+c5fb09b5-2bc8-4675-ab82-15f8f89eabef,"""2026-09-25T14:36:19.515Z""",,,00000,2026-09-25T14:36:19.515000,success,"checkpoint complete: wrote 84 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=8.502 s, sync=0.004 s, total=8.536 s; sync files=24, longest=0.003 s, average=0.001 s; distance=49131 kB, estimate=49131 kB; lsn=C/F80043F8, redo lsn=C/F8000060",postgres,null,[],null
+25c786d9-ace7-416b-80e8-c762ffc9dd9a,"""2026-09-25T14:36:10.979Z""",,,00000,2026-09-25T14:36:10.979000,success,checkpoint starting: time,postgres,null,[],null
+5f6948c8-791a-41eb-9875-d00d4aa28cb0,"""2026-09-25T14:31:15.564Z""",,,00000,2026-09-25T14:31:15.564000,success,"checkpoint complete: wrote 50 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.925 s, sync=0.004 s, total=4.951 s; sync files=11, longest=0.003 s, average=0.001 s; distance=32788 kB, estimate=47503 kB; lsn=C/F50357B0, redo lsn=C/F5005408",postgres,null,[],null
+852508bb-dbc8-4abb-a585-4a482d0dfa9a,"""2026-09-25T14:31:10.614Z""",,,00000,2026-09-25T14:31:10.614000,success,checkpoint starting: time,postgres,null,[],null
+35590700-f06f-436e-bee5-a398410896c7,"""2026-09-25T14:26:14.249Z""",,,00000,2026-09-25T14:26:14.249000,success,"checkpoint complete: wrote 33 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.240 s, sync=0.004 s, total=3.269 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49137 kB, estimate=49137 kB; lsn=C/F30037A8, redo lsn=C/F3000028",postgres,null,[],null
+0d4b1ef0-c475-40bd-b3ad-836a9da4492f,"""2026-09-25T14:26:10.980Z""",,,00000,2026-09-25T14:26:10.980000,success,checkpoint starting: time,postgres,null,[],null
+650c7563-082e-46f6-af01-d22658b5174c,"""2026-09-25T14:23:58.195Z""",,,42703,2026-09-25T14:23:58.195000,error,column users.email does not exist,postgres,null,[],null
+f2ca5aa4-d40c-4ea5-b857-13ed1374d6d4,"""2026-09-25T14:23:57.391Z""",,,42703,2026-09-25T14:23:57.391000,error,column users.email does not exist,postgres,null,[],null
+8635c5fb-2221-4572-8a14-b29241cfb2bd,"""2026-09-25T14:21:16.608Z""",,,00000,2026-09-25T14:21:16.608000,success,"checkpoint complete: wrote 66 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=6.525 s, sync=0.007 s, total=6.552 s; sync files=16, longest=0.003 s, average=0.001 s; distance=32782 kB, estimate=47449 kB; lsn=C/F00038E0, redo lsn=C/F0003850",postgres,null,[],null
+f4838a38-0b68-452a-83df-0df43ad7d81f,"""2026-09-25T14:21:10.057Z""",,,00000,2026-09-25T14:21:10.057000,success,checkpoint starting: time,postgres,null,[],null
+12fcbfdb-021c-4031-aded-69dd9441a38b,"""2026-09-25T14:16:16.725Z""",,,00000,2026-09-25T14:16:16.725000,success,"checkpoint complete: wrote 76 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.618 s, sync=0.004 s, total=7.652 s; sync files=22, longest=0.003 s, average=0.001 s; distance=49079 kB, estimate=49079 kB; lsn=C/EE003378, redo lsn=C/EE000028",postgres,null,[],null
+7f444c59-1721-4404-8cdc-24c80506e0f2,"""2026-09-25T14:16:09.074Z""",,,00000,2026-09-25T14:16:09.074000,success,checkpoint starting: time,postgres,null,[],null
+864dd8a2-93ba-49ca-8309-7d86dd877d1c,"""2026-09-25T14:11:14.662Z""",,,00000,2026-09-25T14:11:14.662000,success,"checkpoint complete: wrote 48 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.724 s, sync=0.004 s, total=4.749 s; sync files=10, longest=0.003 s, average=0.001 s; distance=32840 kB, estimate=47460 kB; lsn=C/EB012438, redo lsn=C/EB0123E0",postgres,null,[],null
+ffb1b575-3ec4-431e-8f90-e163f6a5070c,"""2026-09-25T14:11:09.913Z""",,,00000,2026-09-25T14:11:09.913000,success,checkpoint starting: time,postgres,null,[],null
+43f1eb6d-c11b-4451-b854-379c2e811594,"""2026-09-25T14:07:18.215Z""",,,42703,2026-09-25T14:07:18.215000,error,column users.email does not exist,postgres,null,[],null
+a50c504a-ecdf-4066-b014-cdc950906801,"""2026-09-25T14:06:14.604Z""",,,00000,2026-09-25T14:06:14.604000,success,"checkpoint complete: wrote 47 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.667 s, sync=0.004 s, total=4.700 s; sync files=14, longest=0.003 s, average=0.001 s; distance=49085 kB, estimate=49085 kB; lsn=C/E9000080, redo lsn=C/E9000028",postgres,null,[],null
+a8e6b6b6-92c7-4777-ba39-d8b2c025a9df,"""2026-09-25T14:06:09.906Z""",,,00000,2026-09-25T14:06:09.906000,success,checkpoint starting: time,postgres,null,[],null
+0dff59cb-85d4-4ad3-9331-5e2e765622dd,"""2026-09-25T14:01:13.252Z""",,,42703,2026-09-25T14:01:13.252000,error,column users.email does not exist,postgres,null,[],null
+fd64e843-8b24-439a-bcf0-333b838268a5,"""2026-09-25T14:01:11.520Z""",,,00000,2026-09-25T14:01:11.520000,success,"checkpoint complete: wrote 17 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=1.613 s, sync=0.004 s, total=1.640 s; sync files=3, longest=0.004 s, average=0.002 s; distance=16440 kB, estimate=45890 kB; lsn=C/E6021CE0, redo lsn=C/E6010C08",postgres,null,[],null
+37bb9284-673f-4e6e-9fe9-9e15e0c15a0b,"""2026-09-25T14:01:09.881Z""",,,00000,2026-09-25T14:01:09.881000,success,checkpoint starting: time,postgres,null,[],null
+776e1b88-e854-45e6-8e4c-cf078ca95687,"""2026-09-25T13:56:13.602Z""",,,00000,2026-09-25T13:56:13.602000,success,"checkpoint complete: wrote 46 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.562 s, sync=0.004 s, total=4.597 s; sync files=14, longest=0.003 s, average=0.001 s; distance=49162 kB, estimate=49162 kB; lsn=C/E50029E0, redo lsn=C/E5002988",postgres,null,[],null
+1cc0ee79-03a9-4934-9c71-d5fe8e6981f2,"""2026-09-25T13:56:09.007Z""",,,00000,2026-09-25T13:56:09.007000,success,checkpoint starting: time,postgres,null,[],null
+f9ea96d5-eb07-4d30-aa48-4bf4f6f4d9fc,"""2026-09-25T13:51:49.769Z""",,,23505,2026-09-25T13:51:49.769000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+6046557e-1523-47be-a9f5-bace15dc6f86,"""2026-09-25T13:51:16.571Z""",,,00000,2026-09-25T13:51:16.571000,success,"checkpoint complete: wrote 77 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=7.629 s, sync=0.004 s, total=7.647 s; sync files=9, longest=0.003 s, average=0.001 s; distance=32754 kB, estimate=47512 kB; lsn=C/E20000B8, redo lsn=C/E2000028",postgres,null,[],null
+b75aeb88-16cb-4bb5-b0e4-d39e6e2d26f9,"""2026-09-25T13:51:08.924Z""",,,00000,2026-09-25T13:51:08.924000,success,checkpoint starting: time,postgres,null,[],null
+84e4e020-c944-42ca-a0a6-f13542af86f0,"""2026-09-25T13:46:16.556Z""",,,00000,2026-09-25T13:46:16.556000,success,"checkpoint complete: wrote 76 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.539 s, sync=0.004 s, total=7.570 s; sync files=18, longest=0.003 s, average=0.001 s; distance=49152 kB, estimate=49152 kB; lsn=C/E00036C8, redo lsn=C/E0003670",postgres,null,[],null
+fb8dbbc5-06c0-453f-b4b1-72f28856f37e,"""2026-09-25T13:46:08.987Z""",,,00000,2026-09-25T13:46:08.987000,success,checkpoint starting: time,postgres,null,[],null
+8d895d45-8b7c-4dfb-918b-6488338d6536,"""2026-09-25T13:42:57.264Z""",,,23505,2026-09-25T13:42:57.264000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+5e717272-b69e-412f-ae81-99870dee666c,"""2026-09-25T13:41:13.626Z""",,,00000,2026-09-25T13:41:13.626000,success,"checkpoint complete: wrote 52 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=5.268 s, sync=0.002 s, total=5.299 s; sync files=14, longest=0.002 s, average=0.001 s; distance=32781 kB, estimate=47534 kB; lsn=C/DD003560, redo lsn=C/DD003508",postgres,null,[],null
+1e1db9e6-b1d1-4fa1-ae62-796edd240823,"""2026-09-25T13:41:08.329Z""",,,00000,2026-09-25T13:41:08.329000,success,checkpoint starting: time,postgres,null,[],null
+514977b5-c09b-4d5d-91f8-c435af02aa4a,"""2026-09-25T13:38:30.230Z""",,,42703,2026-09-25T13:38:30.230000,error,column users.email does not exist,postgres,null,[],null
+bf315884-15c7-4575-ac89-3189d7c11cb1,"""2026-09-25T13:38:29.453Z""",,,42703,2026-09-25T13:38:29.453000,error,column users.email does not exist,postgres,null,[],null
+59be7e06-ab4c-4edf-95a4-24cebd627cd2,"""2026-09-25T13:38:08.257Z""",,,42703,2026-09-25T13:38:08.257000,error,column users.email does not exist,postgres,null,[],null
+3871d14a-0db2-447f-a975-d8063dc3eb3b,"""2026-09-25T13:38:07.639Z""",,,42703,2026-09-25T13:38:07.639000,error,column users.email does not exist,postgres,null,[],null
+365cd894-b667-408b-85f2-d0e17426bcc4,"""2026-09-25T13:37:24.702Z""",,,42703,2026-09-25T13:37:24.702000,error,column users.email does not exist,postgres,null,[],null
+27dd21d5-8b94-4637-803c-c49daf919f26,"""2026-09-25T13:36:13.052Z""",,,00000,2026-09-25T13:36:13.052000,success,"checkpoint complete: wrote 44 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.363 s, sync=0.003 s, total=4.387 s; sync files=12, longest=0.003 s, average=0.001 s; distance=49124 kB, estimate=49174 kB; lsn=C/DB0000B8, redo lsn=C/DB000028",postgres,null,[],null
+9f2e2ba2-cfa3-4d92-a617-efd68a6056da,"""2026-09-25T13:36:08.665Z""",,,00000,2026-09-25T13:36:08.665000,success,checkpoint starting: time,postgres,null,[],null
+53636bbe-475e-4aeb-8b64-2a5224e8dc8d,"""2026-09-25T13:31:12.160Z""",,,00000,2026-09-25T13:31:12.160000,success,"checkpoint complete: wrote 39 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.736 s, sync=0.004 s, total=3.766 s; sync files=16, longest=0.003 s, average=0.001 s; distance=49179 kB, estimate=49179 kB; lsn=C/D8006F38, redo lsn=C/D8006EA8",postgres,null,[],null
+042b17e2-fa58-4d19-a6b5-c4108ebb38a5,"""2026-09-25T13:31:08.397Z""",,,00000,2026-09-25T13:31:08.397000,success,checkpoint starting: time,postgres,null,[],null
+d852cf3a-1792-4a4c-8c0c-9ab0665949d3,"""2026-09-25T13:28:55.911Z""",,,42703,2026-09-25T13:28:55.911000,error,column users.email does not exist,postgres,null,[],null
+1fcda71a-3a50-4976-bb69-d3ad57bc3660,"""2026-09-25T13:16:10.549Z""",,,00000,2026-09-25T13:16:10.549000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.378 s, sync=0.004 s, total=2.414 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32763 kB, estimate=47517 kB; lsn=C/D5000080, redo lsn=C/D5000028",postgres,null,[],null
+8de527ae-56cc-4ab1-a38d-b930c4075d75,"""2026-09-25T13:16:08.137Z""",,,00000,2026-09-25T13:16:08.137000,success,checkpoint starting: time,postgres,null,[],null
+3655b89d-0d99-4047-8a7d-aaf072526c63,"""2026-09-25T13:12:14.367Z""",,,42703,2026-09-25T13:12:14.367000,error,column users.email does not exist,postgres,null,[],null
+634b8214-50d0-40d0-95ba-9f7fc1287e3b,"""2026-09-25T13:12:03.540Z""",,,42703,2026-09-25T13:12:03.540000,error,column users.email does not exist,postgres,null,[],null
+5d60a1dd-22ab-4fd7-bd24-994af0dd2f5c,"""2026-09-25T12:26:14.859Z""",,,00000,2026-09-25T12:26:14.859000,success,"checkpoint complete: wrote 73 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.423 s, sync=0.007 s, total=7.462 s; sync files=24, longest=0.006 s, average=0.001 s; distance=49156 kB, estimate=49156 kB; lsn=C/D3001328, redo lsn=C/D30012D0",postgres,null,[],null
+21e2ddae-ec39-4cfa-9b7c-eb05e424fb46,"""2026-09-25T12:26:07.398Z""",,,00000,2026-09-25T12:26:07.398000,success,checkpoint starting: time,postgres,null,[],null
+566f146e-a1bd-4ccb-87d4-d256263c870d,"""2026-09-25T12:22:10.684Z""",,,42703,2026-09-25T12:22:10.684000,error,column users.email does not exist,postgres,null,[],null
+aa7b0a01-eb0e-4d0f-b021-730eda1b19a7,"""2026-09-25T11:51:08.712Z""",,,00000,2026-09-25T11:51:08.712000,success,"checkpoint complete: wrote 22 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.116 s, sync=0.004 s, total=2.140 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=48689 kB; lsn=C/D00000B8, redo lsn=C/D0000028",postgres,null,[],null
+c1159ca6-502d-42de-8683-e944459e51c2,"""2026-09-25T11:51:06.573Z""",,,00000,2026-09-25T11:51:06.573000,success,checkpoint starting: time,postgres,null,[],null
+e9881ecc-f48b-4ae6-a4fb-ccf50ff7d482,"""2026-09-25T11:46:11.231Z""",,,00000,2026-09-25T11:46:11.231000,success,"checkpoint complete: wrote 43 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.267 s, sync=0.002 s, total=4.290 s; sync files=15, longest=0.002 s, average=0.001 s; distance=49115 kB, estimate=50458 kB; lsn=C/CE0000B8, redo lsn=C/CE000028",postgres,null,[],null
+ab67a301-4087-429a-b0a3-a74a578e747e,"""2026-09-25T11:46:06.941Z""",,,00000,2026-09-25T11:46:06.941000,success,checkpoint starting: time,postgres,null,[],null
+3304c56a-0f19-4661-9f66-5f1462227d3f,"""2026-09-25T11:41:15.526Z""",,,00000,2026-09-25T11:41:15.526000,success,"checkpoint complete: wrote 95 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=9.452 s, sync=0.004 s, total=9.478 s; sync files=19, longest=0.003 s, average=0.001 s; distance=32802 kB, estimate=50607 kB; lsn=C/CB009150, redo lsn=C/CB0090C0",postgres,null,[],null
+9cb862d9-45b6-48b9-8b35-5a088bd93337,"""2026-09-25T11:41:06.049Z""",,,00000,2026-09-25T11:41:06.049000,success,checkpoint starting: time,postgres,null,[],null
+27aff5f0-d9b8-45e9-901d-f6953544a2f9,"""2026-09-25T11:36:08.740Z""",,,00000,2026-09-25T11:36:08.740000,success,"checkpoint complete: wrote 32 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.131 s, sync=0.004 s, total=3.164 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32761 kB, estimate=52585 kB; lsn=C/C9000750, redo lsn=C/C90006C0",postgres,null,[],null
+5ddcaddc-89dc-4bd5-b666-8f19100c3aaf,"""2026-09-25T11:36:05.578Z""",,,00000,2026-09-25T11:36:05.578000,success,checkpoint starting: time,postgres,null,[],null
+a55e38bb-222e-444e-a358-28c7691a0701,"""2026-09-25T11:35:04.257Z""",,,00000,2026-09-25T11:35:04.257000,success,process 3740517 acquired ShareLock on transaction 81548 after 1597.480 ms,postgres,null,[],null
+44bd56eb-516b-42c3-ae7c-e11a22d1481d,"""2026-09-25T11:35:03.660Z""",,,00000,2026-09-25T11:35:03.660000,success,process 3740517 still waiting for ShareLock on transaction 81548 after 1000.159 ms,postgres,null,[],null
+d1f50200-0acf-447c-a1bc-eb58c753542a,"""2026-09-25T11:31:08.200Z""",,,00000,2026-09-25T11:31:08.200000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.212 s, sync=0.004 s, total=2.239 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32772 kB, estimate=54788 kB; lsn=C/C70020D8, redo lsn=C/C7002080",postgres,null,[],null
+690ea998-fbe6-4e09-adf8-574276698555,"""2026-09-25T11:31:05.961Z""",,,00000,2026-09-25T11:31:05.961000,success,checkpoint starting: time,postgres,null,[],null
+f5e4a1cb-fbcc-4632-b28e-1d1a56f4d6ce,"""2026-09-25T11:26:10.581Z""",,,00000,2026-09-25T11:26:10.581000,success,"checkpoint complete: wrote 50 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=5.035 s, sync=0.004 s, total=5.067 s; sync files=14, longest=0.003 s, average=0.001 s; distance=49057 kB, estimate=57234 kB; lsn=C/C5003E50, redo lsn=C/C5000DB8",postgres,null,[],null
+6ebf5a20-cc31-4f46-80a6-f179712d83ff,"""2026-09-25T11:26:05.514Z""",,,00000,2026-09-25T11:26:05.514000,success,checkpoint starting: time,postgres,null,[],null
+db6f0af0-53fa-4f32-956d-8dceca2f48d9,"""2026-09-25T11:23:54.181Z""",,,42703,2026-09-25T11:23:54.181000,error,column users.email does not exist,postgres,null,[],null
+6893de8d-5fcc-4ff9-9552-6032d6970bf0,"""2026-09-25T11:22:54.649Z""",,,42703,2026-09-25T11:22:54.649000,error,column users.email does not exist,postgres,null,[],null
+506281cd-9ef0-4cce-bbe3-297932e4faf8,"""2026-09-25T11:22:53.848Z""",,,42703,2026-09-25T11:22:53.848000,error,column users.email does not exist,postgres,null,[],null
+ca72f01f-b106-42d9-a776-ff1bd0c3330c,"""2026-09-25T11:21:13.952Z""",,,00000,2026-09-25T11:21:13.952000,success,"checkpoint complete: wrote 86 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=8.545 s, sync=0.004 s, total=8.569 s; sync files=10, longest=0.003 s, average=0.001 s; distance=32859 kB, estimate=58143 kB; lsn=C/C201B4A8, redo lsn=C/C2018858",postgres,null,[],null
+f0c1d5ca-4f63-42dc-a825-5a8f5694b301,"""2026-09-25T11:21:05.383Z""",,,00000,2026-09-25T11:21:05.383000,success,checkpoint starting: time,postgres,null,[],null
+dcbadc3f-c8a0-4272-b05b-91a1aa91daf8,"""2026-09-25T11:20:40.224Z""",,,42703,2026-09-25T11:20:40.224000,error,column users.email does not exist,postgres,null,[],null
+ca52cc09-6121-4008-9e6a-4f2702c87eeb,"""2026-09-25T11:16:10.098Z""",,,00000,2026-09-25T11:16:10.098000,success,"checkpoint complete: wrote 41 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.186 s, sync=0.004 s, total=4.221 s; sync files=12, longest=0.003 s, average=0.001 s; distance=49158 kB, estimate=60952 kB; lsn=C/C0003CE8, redo lsn=C/C0001BE0",postgres,null,[],null
+b192f6ba-96d9-4b23-93c9-079c23ee9941,"""2026-09-25T11:16:05.878Z""",,,00000,2026-09-25T11:16:05.878000,success,checkpoint starting: time,postgres,null,[],null
+a4bd9c8a-8585-4917-9c82-f51f33a173a3,"""2026-09-25T11:11:32.327Z""",,,00000,2026-09-25T11:11:32.327000,success,"checkpoint complete: wrote 272 buffers (0.9%); 0 WAL file(s) added, 0 removed, 2 recycled; write=27.254 s, sync=0.005 s, total=27.287 s; sync files=18, longest=0.004 s, average=0.001 s; distance=32763 kB, estimate=62263 kB; lsn=C/BD0000B8, redo lsn=C/BD000028",postgres,null,[],null
+92aa604b-5f86-4f17-93c8-68f343978342,"""2026-09-25T11:11:05.041Z""",,,00000,2026-09-25T11:11:05.041000,success,checkpoint starting: time,postgres,null,[],null
+52891be7-39c8-495a-8d65-647239449f85,"""2026-09-25T11:08:05.486Z""",,,23505,2026-09-25T11:08:05.486000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+5ab864b5-87db-4c08-8be7-352405b35d78,"""2026-09-25T11:06:16.572Z""",,,00000,2026-09-25T11:06:16.572000,success,"checkpoint complete: wrote 123 buffers (0.4%); 0 WAL file(s) added, 0 removed, 4 recycled; write=12.313 s, sync=0.005 s, total=12.349 s; sync files=17, longest=0.004 s, average=0.001 s; distance=65540 kB, estimate=65540 kB; lsn=C/BB0013B8, redo lsn=C/BB001360",postgres,null,[],null
+af0854ff-0b32-4cc7-aa8e-d58c9917a5f5,"""2026-09-25T11:06:04.225Z""",,,00000,2026-09-25T11:06:04.225000,success,checkpoint starting: time,postgres,null,[],null
+0e954004-f57d-42f0-b75a-c807b3e590de,"""2026-09-25T11:03:53.590Z""",,,23505,2026-09-25T11:03:53.590000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+dc1cca28-4a7c-4ede-b917-87cc40917f94,"""2026-09-25T10:56:08.585Z""",,,00000,2026-09-25T10:56:08.585000,success,"checkpoint complete: wrote 38 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.731 s, sync=0.004 s, total=3.765 s; sync files=9, longest=0.003 s, average=0.001 s; distance=49113 kB, estimate=49113 kB; lsn=C/B7000080, redo lsn=C/B7000028",postgres,null,[],null
+b2d7a42e-cade-46de-981e-3490e4034aee,"""2026-09-25T10:56:04.820Z""",,,00000,2026-09-25T10:56:04.820000,success,checkpoint starting: time,postgres,null,[],null
+c090f909-db3e-427f-b582-640846c947aa,"""2026-09-25T10:51:09.455Z""",,,00000,2026-09-25T10:51:09.455000,success,"checkpoint complete: wrote 47 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.627 s, sync=0.004 s, total=4.652 s; sync files=10, longest=0.003 s, average=0.001 s; distance=32798 kB, estimate=44586 kB; lsn=C/B4009C18, redo lsn=C/B4009BC0",postgres,null,[],null
+37e02668-1224-4175-900f-1586bc5b09a9,"""2026-09-25T10:51:04.804Z""",,,00000,2026-09-25T10:51:04.804000,success,checkpoint starting: time,postgres,null,[],null
+1c438666-03a2-4892-86eb-022f1a12565f,"""2026-09-25T10:50:32.991Z""",,,23505,2026-09-25T10:50:32.991000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+3ddd063c-e5a0-49e2-a98d-baa98fafcacb,"""2026-09-25T10:46:05.424Z""",,,00000,2026-09-25T10:46:05.424000,success,"checkpoint complete: wrote 13 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=1.213 s, sync=0.003 s, total=1.235 s; sync files=6, longest=0.002 s, average=0.001 s; distance=16366 kB, estimate=45896 kB; lsn=C/B2002380, redo lsn=C/B2002328",postgres,null,[],null
+af31339e-a6f6-4f0b-a3f9-fe3428253cf3,"""2026-09-25T10:46:04.191Z""",,,00000,2026-09-25T10:46:04.191000,success,checkpoint starting: time,postgres,null,[],null
+295a1899-4be9-49a3-8768-c5a4374924d6,"""2026-09-25T10:41:07.905Z""",,,00000,2026-09-25T10:41:07.905000,success,"checkpoint complete: wrote 33 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.310 s, sync=0.004 s, total=3.341 s; sync files=6, longest=0.003 s, average=0.001 s; distance=49177 kB, estimate=49177 kB; lsn=C/B10067D8, redo lsn=C/B1006748",postgres,null,[],null
+4fa0b132-8a62-48a3-8f8b-d4e931ef4f33,"""2026-09-25T10:41:04.565Z""",,,00000,2026-09-25T10:41:04.565000,success,checkpoint starting: time,postgres,null,[],null
+da3000ac-dc64-45f4-b985-646cafdb65fa,"""2026-09-25T10:16:10.320Z""",,,00000,2026-09-25T10:16:10.320000,success,"checkpoint complete: wrote 73 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.233 s, sync=0.005 s, total=7.263 s; sync files=13, longest=0.004 s, average=0.001 s; distance=49079 kB, estimate=49079 kB; lsn=C/AE0000B8, redo lsn=C/AE000028",postgres,null,[],null
+e37b4722-3188-44f5-a1d4-45cb33bb28c0,"""2026-09-25T10:16:03.057Z""",,,00000,2026-09-25T10:16:03.057000,success,checkpoint starting: time,postgres,null,[],null
+9e984ca6-9343-4b75-893d-7e3037776146,"""2026-09-25T10:11:11.673Z""",,,00000,2026-09-25T10:11:11.673000,success,"checkpoint complete: wrote 82 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=8.173 s, sync=0.004 s, total=8.203 s; sync files=25, longest=0.003 s, average=0.001 s; distance=32835 kB, estimate=47345 kB; lsn=C/AB014EB0, redo lsn=C/AB012300",postgres,null,[],null
+f49308b1-b5fd-466f-a6dd-275761cf86ab,"""2026-09-25T10:11:03.472Z""",,,00000,2026-09-25T10:11:03.472000,success,checkpoint starting: time,postgres,null,[],null
+2393e56a-e714-4eee-b12f-6c8685ed178c,"""2026-09-25T10:06:07.091Z""",,,00000,2026-09-25T10:06:07.091000,success,"checkpoint complete: wrote 36 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.604 s, sync=0.004 s, total=3.635 s; sync files=13, longest=0.003 s, average=0.001 s; distance=48957 kB, estimate=48957 kB; lsn=C/A9001580, redo lsn=C/A9001528",postgres,null,[],null
+7b8a31b5-22c6-4573-bcbf-64d37e2f44ef,"""2026-09-25T10:06:03.456Z""",,,00000,2026-09-25T10:06:03.456000,success,checkpoint starting: time,postgres,null,[],null
+cb6e8d45-a52e-4f8f-9bf0-dc24f65c2408,"""2026-09-25T10:03:34.320Z""",,,42703,2026-09-25T10:03:34.320000,error,column users.email does not exist,postgres,null,[],null
+95811eb6-bf7f-46a9-ad07-f2872075ab2a,"""2026-09-25T10:01:05.057Z""",,,00000,2026-09-25T10:01:05.057000,success,"checkpoint complete: wrote 19 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=1.846 s, sync=0.006 s, total=1.884 s; sync files=7, longest=0.004 s, average=0.001 s; distance=16584 kB, estimate=40806 kB; lsn=C/A60320C0, redo lsn=C/A6032068",postgres,null,[],null
+d03f579a-ec42-4511-891a-6944ad748a15,"""2026-09-25T10:01:03.175Z""",,,00000,2026-09-25T10:01:03.175000,success,checkpoint starting: time,postgres,null,[],null
+99df8243-3ffe-4cac-865c-af442539bc3d,"""2026-09-25T10:00:22.371Z""",,,42703,2026-09-25T10:00:22.371000,error,column users.email does not exist,postgres,null,[],null
+e83c07d9-b998-4f2d-8cec-c27ee1d62dbc,"""2026-09-25T10:00:21.831Z""",,,42703,2026-09-25T10:00:21.831000,error,column users.email does not exist,postgres,null,[],null
+92c61d7d-1861-422f-a11a-a007d7626a80,"""2026-09-25T09:56:05.869Z""",,,00000,2026-09-25T09:56:05.869000,success,"checkpoint complete: wrote 20 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.925 s, sync=0.001 s, total=1.938 s; sync files=7, longest=0.001 s, average=0.001 s; distance=32749 kB, estimate=43497 kB; lsn=C/A50000B8, redo lsn=C/A5000060",postgres,null,[],null
+30afde2c-b8e3-447d-b63a-cfdbe4dd23a3,"""2026-09-25T09:56:03.931Z""",,,00000,2026-09-25T09:56:03.931000,success,checkpoint starting: time,postgres,null,[],null
+2f749905-a1f4-4d42-a0d4-66e477a9fcd5,"""2026-09-25T09:51:08.573Z""",,,00000,2026-09-25T09:51:08.573000,success,"checkpoint complete: wrote 47 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.623 s, sync=0.003 s, total=4.649 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32731 kB, estimate=44691 kB; lsn=C/A3004A68, redo lsn=C/A30049D8",postgres,null,[],null
+9fbcef98-4c8b-4914-bc89-cfdf4a86963a,"""2026-09-25T09:51:03.924Z""",,,00000,2026-09-25T09:51:03.924000,success,checkpoint starting: time,postgres,null,[],null
+89f11040-b1ce-46b0-9c91-4d42b77fda9b,"""2026-09-25T09:46:06.563Z""",,,00000,2026-09-25T09:46:06.563000,success,"checkpoint complete: wrote 32 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.221 s, sync=0.004 s, total=3.262 s; sync files=12, longest=0.003 s, average=0.001 s; distance=32755 kB, estimate=46020 kB; lsn=C/A100F550, redo lsn=C/A100DDD8",postgres,null,[],null
+5e4ee093-0795-41a0-9431-79da9e71a245,"""2026-09-25T09:46:03.303Z""",,,00000,2026-09-25T09:46:03.303000,success,checkpoint starting: time,postgres,null,[],null
+f56d008e-5009-45b5-9612-b7337e7aab73,"""2026-09-25T09:44:06.916Z""",,,42703,2026-09-25T09:44:06.916000,error,column users.email does not exist,postgres,null,[],null
+8ab6fb5e-e985-41cb-a0ce-bd63a032fa8d,"""2026-09-25T09:41:17.003Z""",,,00000,2026-09-25T09:41:17.003000,success,"checkpoint complete: wrote 131 buffers (0.5%); 0 WAL file(s) added, 0 removed, 2 recycled; write=13.059 s, sync=0.004 s, total=13.087 s; sync files=18, longest=0.003 s, average=0.001 s; distance=32828 kB, estimate=47494 kB; lsn=C/9F011BA0, redo lsn=C/9F0110D0",postgres,null,[],null
+5d3477e5-56f0-44e8-8f2f-6b04bc4e63c8,"""2026-09-25T09:41:03.917Z""",,,00000,2026-09-25T09:41:03.917000,success,checkpoint starting: time,postgres,null,[],null
+e0d57d0e-c4c1-444d-ab30-2590c0980c4d,"""2026-09-25T09:38:33.189Z""",,,23505,2026-09-25T09:38:33.189000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+6ea37176-1874-4ccc-928a-4517372514ac,"""2026-09-25T09:36:08.563Z""",,,00000,2026-09-25T09:36:08.563000,success,"checkpoint complete: wrote 52 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=5.287 s, sync=0.002 s, total=5.322 s; sync files=13, longest=0.001 s, average=0.001 s; distance=49124 kB, estimate=49124 kB; lsn=C/9D001EF0, redo lsn=C/9D001E98",postgres,null,[],null
+2be902fe-d50e-4a44-905d-fd7a6756aa52,"""2026-09-25T09:36:03.242Z""",,,00000,2026-09-25T09:36:03.242000,success,checkpoint starting: time,postgres,null,[],null
+2bbc24d5-2a1a-4d5b-9063-1b89c3936d1e,"""2026-09-25T09:31:05.784Z""",,,23505,2026-09-25T09:31:05.784000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+20afc81d-47af-475b-b204-9b5949012607,"""2026-09-25T09:31:03.594Z""",,,00000,2026-09-25T09:31:03.594000,success,checkpoint starting: time,postgres,null,[],null
+f991fcf5-3e02-4914-bc83-349676a5c760,"""2026-09-25T09:28:14.682Z""",,,23505,2026-09-25T09:28:14.682000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+67f1ac91-dced-46ba-93d0-86b59d69f797,"""2026-09-25T09:26:07.228Z""",,,00000,2026-09-25T09:26:07.228000,success,"checkpoint complete: wrote 37 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.760 s, sync=0.004 s, total=3.795 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49158 kB, estimate=49158 kB; lsn=C/98001AE0, redo lsn=C/98001A88",postgres,null,[],null
+9783b84d-3a46-4467-a9fe-355ef2c89b9e,"""2026-09-25T09:26:03.434Z""",,,00000,2026-09-25T09:26:03.434000,success,checkpoint starting: time,postgres,null,[],null
+30b9848b-95df-4767-8366-2064d1b16ee9,"""2026-09-25T09:25:57.109Z""",,,23505,2026-09-25T09:25:57.109000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+8ac24709-b5b3-44ca-8984-7cab80460a9e,"""2026-09-25T08:56:04.017Z""",,,00000,2026-09-25T08:56:04.017000,success,"checkpoint complete: wrote 1 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=0.205 s, sync=0.004 s, total=0.232 s; sync files=1, longest=0.003 s, average=0.003 s; distance=32719 kB, estimate=43363 kB; lsn=C/95000080, redo lsn=C/95000028",postgres,null,[],null
+c8c85929-7646-4c3a-957a-b0a70de5bbbb,"""2026-09-25T08:56:03.786Z""",,,00000,2026-09-25T08:56:03.786000,success,checkpoint starting: time,postgres,null,[],null
+7c79572e-a2c9-42be-8db0-34b43fe78ac9,"""2026-09-25T08:51:11.467Z""",,,00000,2026-09-25T08:51:11.467000,success,"checkpoint complete: wrote 78 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=7.758 s, sync=0.005 s, total=7.788 s; sync files=23, longest=0.003 s, average=0.001 s; distance=32811 kB, estimate=44546 kB; lsn=C/9300C460, redo lsn=C/9300C3D0",postgres,null,[],null
+1ac88926-2ed5-4b47-a461-d814c4ebc30e,"""2026-09-25T08:51:03.681Z""",,,00000,2026-09-25T08:51:03.681000,success,checkpoint starting: time,postgres,null,[],null
+b33e2635-188c-43f5-b9d6-31b324d3a6ec,"""2026-09-25T08:46:06.346Z""",,,00000,2026-09-25T08:46:06.346000,success,"checkpoint complete: wrote 31 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.084 s, sync=0.003 s, total=3.108 s; sync files=11, longest=0.002 s, average=0.001 s; distance=32752 kB, estimate=45850 kB; lsn=C/91001558, redo lsn=C/910014C8",postgres,null,[],null
+3f759c57-4355-4d75-ab30-9de884c2b229,"""2026-09-25T08:46:03.239Z""",,,00000,2026-09-25T08:46:03.239000,success,checkpoint starting: time,postgres,null,[],null
+29853b3d-5743-477d-b2a5-4f3a60741576,"""2026-09-25T08:43:25.101Z""",,,42703,2026-09-25T08:43:25.101000,error,column users.email does not exist,postgres,null,[],null
+c9547b52-23c4-479b-944e-90094317e285,"""2026-09-25T08:41:06.898Z""",,,00000,2026-09-25T08:41:06.898000,success,"checkpoint complete: wrote 39 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.826 s, sync=0.004 s, total=3.857 s; sync files=12, longest=0.003 s, average=0.001 s; distance=32788 kB, estimate=47305 kB; lsn=C/8F005470, redo lsn=C/8F005418",postgres,null,[],null
+5970e3fb-8ded-474e-bae2-1111be7d4e6b,"""2026-09-25T08:41:03.042Z""",,,00000,2026-09-25T08:41:03.042000,success,checkpoint starting: time,postgres,null,[],null
+7fb646f7-64de-4b22-9127-8828f0b6aefe,"""2026-09-25T08:37:24.778Z""",,,42703,2026-09-25T08:37:24.778000,error,column users.email does not exist,postgres,null,[],null
+879a03ab-6c55-42e4-81bf-a04beb761e73,"""2026-09-25T08:36:16.762Z""",,,00000,2026-09-25T08:36:16.762000,success,"checkpoint complete: wrote 142 buffers (0.5%); 0 WAL file(s) added, 0 removed, 3 recycled; write=14.179 s, sync=0.006 s, total=14.212 s; sync files=12, longest=0.005 s, average=0.001 s; distance=48918 kB, estimate=48918 kB; lsn=C/8D0000B8, redo lsn=C/8D000028",postgres,null,[],null
+a888fe97-2026-4548-81d7-c0e17959d1d8,"""2026-09-25T08:36:02.552Z""",,,00000,2026-09-25T08:36:02.552000,success,checkpoint starting: time,postgres,null,[],null
+62a147d9-5ea8-4e3c-9efe-9cca3292d1ac,"""2026-09-25T08:31:10.179Z""",,,00000,2026-09-25T08:31:10.179000,success,"checkpoint complete: wrote 82 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=8.145 s, sync=0.005 s, total=8.176 s; sync files=18, longest=0.004 s, average=0.001 s; distance=32956 kB, estimate=47236 kB; lsn=C/8A060B30, redo lsn=C/8A03A570",postgres,null,[],null
+22fb89b4-830b-4bf8-984f-961e85c91000,"""2026-09-25T08:31:02.005Z""",,,00000,2026-09-25T08:31:02.005000,success,checkpoint starting: time,postgres,null,[],null
+99861f2c-bbbf-4837-9abb-2b4af53ba3ed,"""2026-09-25T08:26:49.966Z""",,,42703,2026-09-25T08:26:49.966000,error,column users.email does not exist,postgres,null,[],null
+a91bc9c3-614f-4e9a-a4fc-fe11afc4cc09,"""2026-09-25T08:26:17.757Z""",,,00000,2026-09-25T08:26:17.757000,success,"checkpoint complete: wrote 159 buffers (0.6%); 0 WAL file(s) added, 0 removed, 3 recycled; write=15.981 s, sync=0.004 s, total=16.008 s; sync files=13, longest=0.003 s, average=0.001 s; distance=48822 kB, estimate=48822 kB; lsn=C/88011508, redo lsn=C/8800B2D8",postgres,null,[],null
+693263e5-eda4-49e0-ac4f-259337f974e2,"""2026-09-25T08:26:01.750Z""",,,00000,2026-09-25T08:26:01.750000,success,checkpoint starting: time,postgres,null,[],null
+d42d576d-5941-4bf6-a33c-fee2d54ab895,"""2026-09-25T08:21:21.584Z""",,,23505,2026-09-25T08:21:21.584000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+25b2b344-c4c3-41e4-be3e-6838ad3a645c,"""2026-09-25T08:21:14.390Z""",,,00000,2026-09-25T08:21:14.390000,success,"checkpoint complete: wrote 127 buffers (0.4%); 0 WAL file(s) added, 0 removed, 2 recycled; write=12.706 s, sync=0.012 s, total=12.750 s; sync files=13, longest=0.011 s, average=0.001 s; distance=33141 kB, estimate=47546 kB; lsn=C/85109988, redo lsn=C/8505D778",postgres,null,[],null
+20576c6b-a820-4535-9d4b-aae105de40cf,"""2026-09-25T08:21:01.641Z""",,,00000,2026-09-25T08:21:01.641000,success,checkpoint starting: time,postgres,null,[],null
+bbf5db03-1764-45ee-8284-b6b76afddff5,"""2026-09-25T08:19:22.618Z""",,,23505,2026-09-25T08:19:22.618000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+4695b97e-b65f-437c-9a3d-eef9c529cb38,"""2026-09-25T08:19:18.524Z""",,,23505,2026-09-25T08:19:18.524000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+3e807e5f-0763-479f-9a69-21eada713ecd,"""2026-09-25T08:16:06.301Z""",,,00000,2026-09-25T08:16:06.301000,success,"checkpoint complete: wrote 49 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.878 s, sync=0.004 s, total=4.908 s; sync files=13, longest=0.004 s, average=0.001 s; distance=49147 kB, estimate=49147 kB; lsn=C/83000080, redo lsn=C/83000028",postgres,null,[],null
+ed251920-0f38-4455-aa32-697f61cf3828,"""2026-09-25T08:16:01.398Z""",,,00000,2026-09-25T08:16:01.398000,success,checkpoint starting: time,postgres,null,[],null
+e42193a4-4aa3-4901-b349-90018f9392c4,"""2026-09-25T08:11:02.036Z""",,,00000,2026-09-25T08:11:02.036000,success,"checkpoint complete: wrote 3 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.302 s, sync=0.004 s, total=0.323 s; sync files=2, longest=0.004 s, average=0.002 s; distance=16388 kB, estimate=45833 kB; lsn=C/80001478, redo lsn=C/80001420",postgres,null,[],null
+3e658495-4cb8-41e8-a7c7-877e47f23a63,"""2026-09-25T08:11:01.714Z""",,,00000,2026-09-25T08:11:01.714000,success,checkpoint starting: time,postgres,null,[],null
+9ca4ed08-5645-4ff2-b040-6456721b0ce6,"""2026-09-25T08:06:06.410Z""",,,00000,2026-09-25T08:06:06.410000,success,"checkpoint complete: wrote 47 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.651 s, sync=0.004 s, total=4.684 s; sync files=24, longest=0.003 s, average=0.001 s; distance=49105 kB, estimate=49105 kB; lsn=C/7F000080, redo lsn=C/7F000028",postgres,null,[],null
+700b4012-772b-44e1-ba31-57230af357ee,"""2026-09-25T08:06:01.728Z""",,,00000,2026-09-25T08:06:01.728000,success,checkpoint starting: time,postgres,null,[],null
+5164c6ad-42ff-4bd6-8c25-4f9bcd86f0ff,"""2026-09-25T08:01:06.361Z""",,,00000,2026-09-25T08:01:06.361000,success,"checkpoint complete: wrote 45 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.430 s, sync=0.004 s, total=4.448 s; sync files=15, longest=0.004 s, average=0.001 s; distance=32799 kB, estimate=47479 kB; lsn=C/7C00C5D8, redo lsn=C/7C00BA58",postgres,null,[],null
+b0da63c2-f5bf-48fe-9236-8c7724edef32,"""2026-09-25T08:01:01.913Z""",,,00000,2026-09-25T08:01:01.913000,success,checkpoint starting: time,postgres,null,[],null
+9dd6d7da-5352-4d52-be5e-2d3943d1f085,"""2026-09-25T07:56:09.518Z""",,,00000,2026-09-25T07:56:09.518000,success,"checkpoint complete: wrote 80 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.954 s, sync=0.004 s, total=7.983 s; sync files=14, longest=0.003 s, average=0.001 s; distance=49110 kB, estimate=49110 kB; lsn=C/7A006118, redo lsn=C/7A003CB0",postgres,null,[],null
+bc423ad2-f56b-4f37-82b8-832047dfc711,"""2026-09-25T07:56:01.535Z""",,,00000,2026-09-25T07:56:01.535000,success,checkpoint starting: time,postgres,null,[],null
+e6a043e3-cdbe-4f7c-b381-f64abddcbdab,"""2026-09-25T07:54:02.782Z""",,,23505,2026-09-25T07:54:02.782000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+608c8a2d-65db-45a2-9c19-84d497cc36ff,"""2026-09-25T07:51:05.160Z""",,,00000,2026-09-25T07:51:05.160000,success,"checkpoint complete: wrote 41 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.025 s, sync=0.004 s, total=4.053 s; sync files=14, longest=0.004 s, average=0.001 s; distance=32815 kB, estimate=47524 kB; lsn=C/7701A298, redo lsn=C/7700E2F0",postgres,null,[],null
+22b8eaf1-1169-4770-9e79-d18c937bc4c1,"""2026-09-25T07:51:01.108Z""",,,00000,2026-09-25T07:51:01.108000,success,checkpoint starting: time,postgres,null,[],null
+1e88f1d5-af7e-4069-aac7-cef61fb9c2d5,"""2026-09-25T07:46:04.766Z""",,,00000,2026-09-25T07:46:04.766000,success,"checkpoint complete: wrote 29 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.819 s, sync=0.003 s, total=2.846 s; sync files=9, longest=0.003 s, average=0.001 s; distance=49158 kB, estimate=49158 kB; lsn=C/75002620, redo lsn=C/750025C8",postgres,null,[],null
+69db5e63-a6c4-40dd-a101-630e3d5f580c,"""2026-09-25T07:46:01.921Z""",,,00000,2026-09-25T07:46:01.921000,success,checkpoint starting: time,postgres,null,[],null
+42c0395b-f1c9-4dca-aaaf-c93659581d15,"""2026-09-25T07:43:23.781Z""",,,42703,2026-09-25T07:43:23.781000,error,column users.email does not exist,postgres,null,[],null
+29d8f90a-8f6d-4afb-8362-04cd50571701,"""2026-09-25T07:41:05.532Z""",,,00000,2026-09-25T07:41:05.532000,success,"checkpoint complete: wrote 39 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.900 s, sync=0.004 s, total=3.975 s; sync files=17, longest=0.003 s, average=0.001 s; distance=32680 kB, estimate=47571 kB; lsn=C/72000BB8, redo lsn=C/72000B60",postgres,null,[],null
+4dc3f2b5-b41f-436e-80d1-d7b30fc7efd5,"""2026-09-25T07:41:01.572Z""",,,00000,2026-09-25T07:41:01.572000,success,checkpoint starting: time,postgres,null,[],null
+c2a608dd-40a5-43bb-a530-e0be2c934385,"""2026-09-25T07:36:05.221Z""",,,00000,2026-09-25T07:36:05.221000,success,"checkpoint complete: wrote 37 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.631 s, sync=0.004 s, total=3.657 s; sync files=11, longest=0.003 s, average=0.001 s; distance=49225 kB, estimate=49225 kB; lsn=C/70016950, redo lsn=C/700168C0",postgres,null,[],null
+1e85c56d-c477-46c2-93c5-6b36a7cd8af5,"""2026-09-25T07:36:01.564Z""",,,00000,2026-09-25T07:36:01.564000,success,checkpoint starting: time,postgres,null,[],null
+ea22d1e4-5c0b-4ba6-bea4-a58880be31e6,"""2026-09-25T07:35:52.207Z""",,,42703,2026-09-25T07:35:52.207000,error,column users.email does not exist,postgres,null,[],null
+98c276d1-102f-447c-83e7-72b13108d8dc,"""2026-09-25T07:31:06.115Z""",,,00000,2026-09-25T07:31:06.115000,success,"checkpoint complete: wrote 43 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.248 s, sync=0.004 s, total=4.277 s; sync files=14, longest=0.003 s, average=0.001 s; distance=32776 kB, estimate=47505 kB; lsn=C/6D005758, redo lsn=C/6D004148",postgres,null,[],null
+36c430e0-895b-44ca-84f2-c82190a44128,"""2026-09-25T07:31:01.839Z""",,,00000,2026-09-25T07:31:01.839000,success,checkpoint starting: time,postgres,null,[],null
+85fb7137-d4e8-48b5-91d3-740087d3d284,"""2026-09-25T07:26:03.495Z""",,,00000,2026-09-25T07:26:03.495000,success,"checkpoint complete: wrote 24 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.312 s, sync=0.003 s, total=2.330 s; sync files=11, longest=0.002 s, average=0.001 s; distance=49142 kB, estimate=49142 kB; lsn=C/6B002180, redo lsn=C/6B002128",postgres,null,[],null
+d509fad0-aa2f-4ca9-96cd-63af4b648aaf,"""2026-09-25T07:26:01.165Z""",,,00000,2026-09-25T07:26:01.165000,success,checkpoint starting: time,postgres,null,[],null
+d3e0653a-c47d-435a-b29c-fc335267122e,"""2026-09-25T07:21:06.769Z""",,,00000,2026-09-25T07:21:06.769000,success,"checkpoint complete: wrote 49 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.933 s, sync=0.005 s, total=4.997 s; sync files=23, longest=0.003 s, average=0.001 s; distance=32562 kB, estimate=47138 kB; lsn=C/68004820, redo lsn=C/68004790",postgres,null,[],null
+83038782-8d3e-405d-b39d-249a3f177d50,"""2026-09-25T07:21:01.781Z""",,,00000,2026-09-25T07:21:01.781000,success,checkpoint starting: time,postgres,null,[],null
+3eb77c1f-dc33-4ece-8b72-31153b4d007f,"""2026-09-25T07:17:16.545Z""",,,,2026-09-25T07:17:16.545543,success,"127.0.0.1 - anon [25/Sep/2026:07:17:16 +0000] ""PATCH /fai_master_profiles?model_no=neq.BBYD%20MB%20V15%20BOT HTTP/1.1"" 500 100 """" ""Python-urllib/3.12""",postgrest,null,[],null
+d7ad1a90-078c-4180-9029-5acd1d458a2b,"""2026-09-25T07:17:16.500Z""",,,,2026-09-25T07:17:16.500725,success,"{""code"":""57014"",""details"":null,""hint"":null,""message"":""canceling statement due to statement timeout""}",postgrest,null,[],null
+86afaaab-5a9b-4016-abd8-b228c5d804c2,"""2026-09-25T07:17:12.420Z""",,,57014,2026-09-25T07:17:12.420000,error,canceling statement due to statement timeout,postgres,null,[],null
+9f945e0c-34d6-499d-86a3-0fe440faebf7,"""2026-09-25T07:16:10.435Z""",,,00000,2026-09-25T07:16:10.435000,success,"checkpoint complete: wrote 88 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=8.899 s, sync=0.006 s, total=8.959 s; sync files=21, longest=0.004 s, average=0.001 s; distance=48757 kB, estimate=48757 kB; lsn=C/66037CB0, redo lsn=C/66037C20",postgres,null,[],null
+d3a0ab1f-ebe9-4f80-a013-2c9ea8a944b7,"""2026-09-25T07:16:01.478Z""",,,00000,2026-09-25T07:16:01.478000,success,checkpoint starting: time,postgres,null,[],null
+774d64a2-6f05-4f11-afad-3fe2b3bfdf6b,"""2026-09-25T07:11:23.053Z""",,,00000,2026-09-25T07:11:23.053000,success,"checkpoint complete: wrote 216 buffers (0.8%); 0 WAL file(s) added, 0 removed, 2 recycled; write=21.645 s, sync=0.006 s, total=21.672 s; sync files=26, longest=0.004 s, average=0.001 s; distance=33292 kB, estimate=46092 kB; lsn=C/631520B8, redo lsn=C/6309A640",postgres,null,[],null
+243f96ab-3bc6-484c-a6cc-d2bb34af44db,"""2026-09-25T07:11:01.382Z""",,,00000,2026-09-25T07:11:01.382000,success,checkpoint starting: time,postgres,null,[],null
+31944925-de1b-4598-b897-8cdfa9d1757a,"""2026-09-25T07:06:41.957Z""",,,23505,2026-09-25T07:06:41.957000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+f89a5d8e-4637-407a-9f4c-c6bb1cd63ceb,"""2026-09-25T07:06:03.068Z""",,,00000,2026-09-25T07:06:03.068000,success,"checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.041 s, sync=0.004 s, total=2.066 s; sync files=8, longest=0.003 s, average=0.001 s; distance=32860 kB, estimate=47514 kB; lsn=C/61017310, redo lsn=C/610172B8",postgres,null,[],null
+0d7c07a0-121b-4ab9-bef5-378a0dc4c3c4,"""2026-09-25T07:06:01.003Z""",,,00000,2026-09-25T07:06:01.003000,success,checkpoint starting: time,postgres,null,[],null
+93d8dc7f-5b6b-4b8b-92a7-3511bc1b44d8,"""2026-09-25T06:56:04.447Z""",,,00000,2026-09-25T06:56:04.447000,success,"checkpoint complete: wrote 36 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.542 s, sync=0.004 s, total=3.585 s; sync files=13, longest=0.003 s, average=0.001 s; distance=49143 kB, estimate=49143 kB; lsn=C/5F000080, redo lsn=C/5F000028",postgres,null,[],null
+ac56ce16-c537-4eb3-8ab7-dd15e816697c,"""2026-09-25T06:56:00.862Z""",,,00000,2026-09-25T06:56:00.862000,success,checkpoint starting: time,postgres,null,[],null
+dddcc38e-9ca8-412d-9e63-feeec0b2e5d4,"""2026-09-25T06:51:31.968Z""",,,23505,2026-09-25T06:51:31.968000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+5991ff5e-de03-4f55-9896-e3c630e27693,"""2026-09-25T06:51:03.421Z""",,,00000,2026-09-25T06:51:03.421000,success,"checkpoint complete: wrote 31 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.020 s, sync=0.006 s, total=3.048 s; sync files=12, longest=0.004 s, average=0.001 s; distance=32739 kB, estimate=47544 kB; lsn=C/5C004A90, redo lsn=C/5C002380",postgres,null,[],null
+779c765b-115d-4119-b0cf-44f9f3d49af9,"""2026-09-25T06:51:00.374Z""",,,00000,2026-09-25T06:51:00.374000,success,checkpoint starting: time,postgres,null,[],null
+bdd9da4b-ed31-4441-9dec-1b348f2221c6,"""2026-09-25T06:47:56.807Z""",,,42703,2026-09-25T06:47:56.807000,error,column users.email does not exist,postgres,null,[],null
+647856e9-f3d4-4eae-b323-4adb920716ed,"""2026-09-25T06:46:10.029Z""",,,00000,2026-09-25T06:46:10.029000,success,"checkpoint complete: wrote 93 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=9.334 s, sync=0.002 s, total=9.365 s; sync files=25, longest=0.002 s, average=0.001 s; distance=49188 kB, estimate=49188 kB; lsn=C/5A00F750, redo lsn=C/5A009458",postgres,null,[],null
+61edf096-a81a-4231-bb1c-582a6a298eec,"""2026-09-25T06:46:00.664Z""",,,00000,2026-09-25T06:46:00.664000,success,checkpoint starting: time,postgres,null,[],null
+29e024eb-72f7-435c-81f0-26c0af09a453,"""2026-09-25T06:42:44.235Z""",,,23505,2026-09-25T06:42:44.235000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+e6a2f511-953b-4e90-986f-913026c405fd,"""2026-09-25T06:41:04.279Z""",,,00000,2026-09-25T06:41:04.279000,success,"checkpoint complete: wrote 38 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.625 s, sync=0.004 s, total=3.651 s; sync files=10, longest=0.003 s, average=0.001 s; distance=32730 kB, estimate=47500 kB; lsn=C/57000F60, redo lsn=C/57000060",postgres,null,[],null
+716907db-0ad1-46c2-9da9-ee1f4e4268b6,"""2026-09-25T06:41:00.629Z""",,,00000,2026-09-25T06:41:00.629000,success,checkpoint starting: time,postgres,null,[],null
+702a33f9-1ad2-4cb7-8ba5-6b0149e81d49,"""2026-09-25T06:37:22.369Z""",,,23505,2026-09-25T06:37:22.369000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+11bc7381-9877-4b64-ba5e-32e79e3e9a63,"""2026-09-25T06:36:37.269Z""",,,00000,2026-09-25T06:36:37.269000,success,"checkpoint complete: wrote 369 buffers (1.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=37.121 s, sync=0.004 s, total=37.164 s; sync files=26, longest=0.004 s, average=0.001 s; distance=49141 kB, estimate=49141 kB; lsn=C/55013A50, redo lsn=C/55009490",postgres,null,[],null
+0561dce2-8457-46ff-a5e4-80ae1a844567,"""2026-09-25T06:36:00.107Z""",,,00000,2026-09-25T06:36:00.107000,success,checkpoint starting: time,postgres,null,[],null
+011a06e7-5805-4eb1-b896-1c3116ca6624,"""2026-09-25T06:35:03.440Z""",,,23505,2026-09-25T06:35:03.440000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+c51966a4-6375-4b8a-96bc-d7a9630c2e54,"""2026-09-25T06:35:02.288Z""",,,23505,2026-09-25T06:35:02.288000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+0ddcecc8-154c-4be0-a3f3-dc8d4c61d918,"""2026-09-25T06:35:01.132Z""",,,23505,2026-09-25T06:35:01.132000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+d991d955-8ef3-4fce-9b74-aab28ff6fb89,"""2026-09-25T06:35:00.047Z""",,,23505,2026-09-25T06:35:00.047000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+13446c3e-da72-49e8-a2cf-dafae7e58a52,"""2026-09-25T06:34:53.502Z""",,,42703,2026-09-25T06:34:53.502000,error,column users.email does not exist,postgres,null,[],null
+c6fd1d45-9cfc-458d-be6b-bb8c1ebcb422,"""2026-09-25T06:33:35.272Z""",,,42703,2026-09-25T06:33:35.272000,error,column users.email does not exist,postgres,null,[],null
+696b0549-d30e-4845-b41d-f9d5e9b307a5,"""2026-09-25T06:32:27.987Z""",,,23505,2026-09-25T06:32:27.987000,error,"duplicate key value violates unique constraint ""fai_audits_pkey""",postgres,null,[],null
+fa93d688-d591-4a94-ad7d-a7cfb8b32fee,"""2026-09-25T06:31:02.733Z""",,,00000,2026-09-25T06:31:02.733000,success,"checkpoint complete: wrote 21 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=2.026 s, sync=0.006 s, total=2.059 s; sync files=10, longest=0.004 s, average=0.001 s; distance=16431 kB, estimate=43071 kB; lsn=C/5200BF88, redo lsn=C/5200BF30",postgres,null,[],null
+57cbec56-4893-413a-85fc-887902269be4,"""2026-09-25T06:31:00.675Z""",,,00000,2026-09-25T06:31:00.675000,success,checkpoint starting: time,postgres,null,[],null
+63e34929-7651-46bf-9a73-3f3f4af45136,"""2026-09-25T06:27:26.503Z""",,,23505,2026-09-25T06:27:26.503000,error,"duplicate key value violates unique constraint ""fai_audits_pkey""",postgres,null,[],null
+10c25122-5948-4ca3-a2a0-0869c09e44e8,"""2026-09-25T06:26:10.370Z""",,,00000,2026-09-25T06:26:10.370000,success,"checkpoint complete: wrote 101 buffers (0.4%); 0 WAL file(s) added, 0 removed, 2 recycled; write=10.067 s, sync=0.005 s, total=10.095 s; sync files=10, longest=0.004 s, average=0.001 s; distance=32654 kB, estimate=46031 kB; lsn=C/510000B8, redo lsn=C/51000028",postgres,null,[],null
+7cb95df8-ec09-4ee3-8a54-eb26c5f87f36,"""2026-09-25T06:26:00.276Z""",,,00000,2026-09-25T06:26:00.276000,success,checkpoint starting: time,postgres,null,[],null
+99d90fd3-7a47-4f57-a935-25a6b3dec94f,"""2026-09-25T06:21:04.932Z""",,,00000,2026-09-25T06:21:04.932000,success,"checkpoint complete: wrote 49 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.868 s, sync=0.003 s, total=4.904 s; sync files=44, longest=0.003 s, average=0.001 s; distance=32881 kB, estimate=47518 kB; lsn=C/4F01C768, redo lsn=C/4F01C6D8",postgres,null,[],null
+f40a1dc7-5635-436c-bc6b-86fae22e8b56,"""2026-09-25T06:21:00.028Z""",,,00000,2026-09-25T06:21:00.028000,success,checkpoint starting: time,postgres,null,[],null
+65190003-44ba-4bce-bad6-d963d2e68361,"""2026-09-25T06:20:26.868Z""",,,,2026-09-25T06:20:26.868423,success,Schema cache loaded in 7.0 milliseconds,postgrest,null,[],null
+1633b1ad-b389-4483-b641-c83c439c3869,"""2026-09-25T06:20:26.867Z""",,,,2026-09-25T06:20:26.867190,success,"Schema cache loaded 8 Relations, 2 Relationships, 1 Functions, 0 Domain Representations, 4 Media Type Handlers, 1196 Timezones",postgrest,null,[],null
+0f142f52-9c1a-47f7-b1cc-cb37f08fa013,"""2026-09-25T06:20:26.860Z""",,,,2026-09-25T06:20:26.860166,success,Schema cache queried in 1444.6 milliseconds,postgrest,null,[],null
+27e7aafd-19fb-41f2-b15b-b6c62da8e7ef,"""2026-09-25T06:20:25.413Z""",,,,2026-09-25T06:20:25.413942,success,Config reloaded,postgrest,null,[],null
+2f610624-28f4-4a93-9336-f7276c482f33,"""2026-09-25T06:20:25.303Z""",,,,2026-09-25T06:20:25.303228,success,Connection Pool initialized with a maximum size of 10 connections,postgrest,null,[],null
+49f0de36-841a-4bdb-a136-26d4cc8c77fd,"""2026-09-25T06:20:25.301Z""",,,,2026-09-25T06:20:25.301247,success,"Successfully connected to PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",postgrest,null,[],null
+403bd791-7685-45c3-9882-3a4819deb762,"""2026-09-25T06:20:25.261Z""",,,,2026-09-25T06:20:25.261842,success,"Received a schema cache reload message on the ""pgrst"" channel",postgrest,null,[],null
+9c5e1a65-3748-4c1a-9bff-116a16ccd2cf,"""2026-09-25T06:20:24.993Z""",,,00000,2026-09-25T06:20:24.993000,success,"statement: 
+    CREATE TABLE IF NOT EXISTS public.fai_audits (
+        audit_id TEXT PRIMARY KEY,
+        audit_type TEXT DEFAULT 'FIRST_ARTICLE',
+        process_type TEXT DEFAULT 'SOLDER_PASTE',
+        line_name TEXT NOT NULL,
+        work_order TEXT NOT NULL,
+        model_no TEXT NOT NULL,
+        customer TEXT,
+        shift TEXT DEFAULT 'Day Shift',
+        audit_time TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        green_hf TEXT DEFAULT 'Green/HF',
+        pcba_photo_url TEXT,
+        sample_qty INTEGER DEFAULT 5,
+        lot_qty INTEGER DEFAULT 1000,
+        pcb_pn TEXT,
+        pcb_date_code TEXT,
+        pdm_bom_version TEXT,
+        solder_paste_brand TEXT,
+        first_article_time TEXT,
+        stencil_thickness TEXT,
+        stencil_no TEXT,
+        stencil_sn TEXT,
+        paste_thickness_range TEXT,
+        thickness_points JSONB DEFAULT '[]'::jsonb,
+        notes_eng_change TEXT,
+        ecn_mn_req TEXT,
+        customer_email_req TEXT,
+        critical_components JSONB DEFAULT '[]'::jsonb,
+        details JSONB DEFAULT '[]'::jsonb,
+        auditor TEXT,
+        verifier TEXT,
+        overall_status TEXT DEFAULT 'OK',
+        payload TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_fai_audits_time ON public.fai_audits(audit_time);
+    CREATE INDEX IF NOT EXISTS idx_fai_audits_line ON public.fai_audits(line_name);
+    CREATE INDEX IF NOT EXISTS idx_fai_audits_type ON public.fai_audits(audit_type);
+
+    ALTER TABLE public.fai_audits ENABLE ROW LEVEL SECURITY;
+
+    DO $$
+    BEGIN
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_policies WHERE tablename = 'fai_audits' AND policyname = 'allow_public_all_fai_audits'
+        ) THEN
+            CREATE POLICY ""allow_public_all_fai_audits"" ON public.fai_audits FOR ALL TO public USING (true) WITH CHECK (true);
+        END IF;
+    END
+    $$;
+
+    GRANT ALL PRIVILEGES ON TABLE public.fai_audits TO anon, authenticated, service_role;
+    ",postgres,null,[],null
+a4744757-aae9-41de-bb82-d50d778a9f37,"""2026-09-25T06:16:07.659Z""",,,00000,2026-09-25T06:16:07.659000,success,"checkpoint complete: wrote 77 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=7.681 s, sync=0.004 s, total=7.720 s; sync files=25, longest=0.003 s, average=0.001 s; distance=49144 kB, estimate=49144 kB; lsn=C/4D0000B8, redo lsn=C/4D000028",postgres,null,[],null
+b4d44d4a-03fd-44b0-8153-b40dab23b9ee,"""2026-09-25T06:15:59.941Z""",,,00000,2026-09-25T06:15:59.941000,success,checkpoint starting: time,postgres,null,[],null
+d12576f1-b7bb-453e-b0cb-ad9d8276bb6f,"""2026-09-25T06:13:04.101Z""",,,42703,2026-09-25T06:13:04.101000,error,column users.email does not exist,postgres,null,[],null
+d93058cc-90c7-4d56-b30d-a9ff517305f5,"""2026-09-25T06:13:03.250Z""",,,42703,2026-09-25T06:13:03.250000,error,column users.email does not exist,postgres,null,[],null
+c2d58ee7-bda8-4659-8c82-bafb884fdcb4,"""2026-09-25T06:11:17.561Z""",,,00000,2026-09-25T06:11:17.561000,success,"checkpoint complete: wrote 180 buffers (0.6%); 0 WAL file(s) added, 0 removed, 2 recycled; write=18.029 s, sync=0.006 s, total=18.070 s; sync files=18, longest=0.005 s, average=0.001 s; distance=32537 kB, estimate=47680 kB; lsn=C/4A03CDD0, redo lsn=C/4A001E08",postgres,null,[],null
+b4dafe46-2310-48ec-b847-5a86a9c4b978,"""2026-09-25T06:10:59.495Z""",,,00000,2026-09-25T06:10:59.495000,success,checkpoint starting: time,postgres,null,[],null
+644fbe86-efbc-4be9-82bb-7c74672e9a7a,"""2026-09-25T06:07:48.364Z""",,,23505,2026-09-25T06:07:48.364000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+decc95c5-0777-4883-b1f7-33c5fdaa656a,"""2026-09-25T06:06:15.152Z""",,,00000,2026-09-25T06:06:15.152000,success,"checkpoint complete: wrote 152 buffers (0.5%); 0 WAL file(s) added, 0 removed, 3 recycled; write=15.228 s, sync=0.005 s, total=15.262 s; sync files=19, longest=0.004 s, average=0.001 s; distance=49363 kB, estimate=49363 kB; lsn=C/4811DA90, redo lsn=C/4803B9A8",postgres,null,[],null
+26fbb3a6-002d-42ec-81cb-8a204e75f547,"""2026-09-25T06:06:12.288Z""",,,23505,2026-09-25T06:06:12.288000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+d60e4eb2-1ae5-485d-8e3d-dd3db95ae8f9,"""2026-09-25T06:06:10.094Z""",,,23505,2026-09-25T06:06:10.094000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+ccd5e527-4ac7-461a-94ec-80017c88f68a,"""2026-09-25T06:06:06.961Z""",,,23505,2026-09-25T06:06:06.961000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+2992bd3d-d983-40ef-830e-f7d49730d2f1,"""2026-09-25T06:05:59.889Z""",,,00000,2026-09-25T06:05:59.889000,success,checkpoint starting: time,postgres,null,[],null
+ff49c2d1-c05d-46f8-b859-0353d6a46651,"""2026-09-25T06:05:33.498Z""",,,23505,2026-09-25T06:05:33.498000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+115246a2-a96c-48c3-8e37-136a7e778bc4,"""2026-09-25T06:04:54.539Z""",,,23505,2026-09-25T06:04:54.539000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+0e5cccdf-87a5-49d1-8a79-84696b764a60,"""2026-09-25T06:04:44.757Z""",,,42703,2026-09-25T06:04:44.757000,error,column users.email does not exist,postgres,null,[],null
+e25f24aa-e02f-4a0c-9d75-cd54ce5faf5b,"""2026-09-25T06:01:02.351Z""",,,00000,2026-09-25T06:01:02.351000,success,"checkpoint complete: wrote 29 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=3.063 s, sync=0.005 s, total=3.106 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32795 kB, estimate=43371 kB; lsn=C/45006D20, redo lsn=C/45006C90",postgres,null,[],null
+243ff052-7f1a-41dd-bec8-02c46a27284f,"""2026-09-25T06:00:59.247Z""",,,00000,2026-09-25T06:00:59.247000,success,checkpoint starting: time,postgres,null,[],null
+3b74142b-202a-4d95-8031-f7c61df3a6cd,"""2026-09-25T05:56:00.830Z""",,,00000,2026-09-25T05:56:00.830000,success,"checkpoint complete: wrote 12 buffers (0.0%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.162 s, sync=0.005 s, total=1.197 s; sync files=3, longest=0.004 s, average=0.002 s; distance=32768 kB, estimate=44546 kB; lsn=C/430000B8, redo lsn=C/43000060",postgres,null,[],null
+109e693a-a391-434d-85f4-e1cfd971b411,"""2026-09-25T05:55:59.633Z""",,,00000,2026-09-25T05:55:59.633000,success,checkpoint starting: time,postgres,null,[],null
+e4d4ae09-1801-4775-b129-e6b3ba1a1ef2,"""2026-09-25T05:55:11.178Z""",,,42703,2026-09-25T05:55:11.178000,error,column users.email does not exist,postgres,null,[],null
+7430cd60-9b9f-48b9-82c6-b2b41ccb4a68,"""2026-09-25T05:55:10.127Z""",,,42703,2026-09-25T05:55:10.127000,error,column users.email does not exist,postgres,null,[],null
+80c7f1b5-20a3-4131-bd1f-9440e683d10f,"""2026-09-25T05:55:09.751Z""",,,42703,2026-09-25T05:55:09.751000,error,column users.email does not exist,postgres,null,[],null
+e6638381-ddbe-49a1-84a8-da8486b7f389,"""2026-09-25T05:51:00.328Z""",,,00000,2026-09-25T05:51:00.328000,success,"checkpoint complete: wrote 9 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.805 s, sync=0.003 s, total=0.819 s; sync files=6, longest=0.002 s, average=0.001 s; distance=16384 kB, estimate=45855 kB; lsn=C/41000080, redo lsn=C/41000028",postgres,null,[],null
+4ffb15ed-886e-4c2b-944a-90164d1d51d9,"""2026-09-25T05:50:59.509Z""",,,00000,2026-09-25T05:50:59.509000,success,checkpoint starting: time,postgres,null,[],null
+098dc982-24c2-4887-9cf5-fb25760be522,"""2026-09-25T05:46:02.264Z""",,,00000,2026-09-25T05:46:02.264000,success,"checkpoint complete: wrote 29 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.827 s, sync=0.005 s, total=2.863 s; sync files=6, longest=0.004 s, average=0.001 s; distance=49130 kB, estimate=49130 kB; lsn=C/400000B8, redo lsn=C/40000028",postgres,null,[],null
+31ea0de4-6c35-4013-bfdd-28df5bc8ea65,"""2026-09-25T05:45:59.402Z""",,,00000,2026-09-25T05:45:59.402000,success,checkpoint starting: time,postgres,null,[],null
+05039b9e-3b5b-406f-a7b3-a4a972679fd4,"""2026-09-25T05:41:01.970Z""",,,00000,2026-09-25T05:41:01.970000,success,"checkpoint complete: wrote 25 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.419 s, sync=0.004 s, total=2.447 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32781 kB, estimate=47476 kB; lsn=C/3D005708, redo lsn=C/3D0056B0",postgres,null,[],null
+4584124e-1d2c-4302-b8fd-61de9ee1f1d0,"""2026-09-25T05:40:59.523Z""",,,00000,2026-09-25T05:40:59.523000,success,checkpoint starting: time,postgres,null,[],null
+7bc22c72-8880-4e82-ad2d-40ff7939f6bf,"""2026-09-25T05:36:03.161Z""",,,00000,2026-09-25T05:36:03.161000,success,"checkpoint complete: wrote 31 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=3.196 s, sync=0.005 s, total=3.237 s; sync files=12, longest=0.004 s, average=0.001 s; distance=49108 kB, estimate=49108 kB; lsn=C/3B001F30, redo lsn=C/3B001ED8",postgres,null,[],null
+96fa3f29-9701-4c60-a6d9-2488ba256961,"""2026-09-25T05:35:59.925Z""",,,00000,2026-09-25T05:35:59.925000,success,checkpoint starting: time,postgres,null,[],null
+990925eb-9c8c-4f65-ac38-e94580b30239,"""2026-09-25T05:21:01.066Z""",,,00000,2026-09-25T05:21:01.066000,success,"checkpoint complete: wrote 17 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=1.612 s, sync=0.004 s, total=1.634 s; sync files=7, longest=0.003 s, average=0.001 s; distance=16434 kB, estimate=43015 kB; lsn=C/3800CC28, redo lsn=C/3800CBD0",postgres,null,[],null
+49f5072f-c873-4952-9fd1-234b75cd885e,"""2026-09-25T05:20:59.433Z""",,,00000,2026-09-25T05:20:59.433000,success,checkpoint starting: time,postgres,null,[],null
+b4354f48-795f-4031-be66-deda70a62981,"""2026-09-25T05:16:01.126Z""",,,00000,2026-09-25T05:16:01.126000,success,"checkpoint complete: wrote 16 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.526 s, sync=0.004 s, total=1.550 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=45968 kB; lsn=C/37000108, redo lsn=C/370000B0",postgres,null,[],null
+bae659c7-94af-453e-b0d7-7b7d2dab8e13,"""2026-09-25T05:15:59.577Z""",,,00000,2026-09-25T05:15:59.577000,success,checkpoint starting: time,postgres,null,[],null
+e7edcc63-d041-4b28-bcf4-652956e0167b,"""2026-09-25T05:13:29.930Z""",,,42703,2026-09-25T05:13:29.930000,error,column users.email does not exist,postgres,null,[],null
+32800c6a-8130-4e78-a7e9-4abc5ce13345,"""2026-09-25T05:11:02.338Z""",,,00000,2026-09-25T05:11:02.338000,success,"checkpoint complete: wrote 26 buffers (0.1%); 0 WAL file(s) added, 0 removed, 1 recycled; write=2.554 s, sync=0.003 s, total=2.632 s; sync files=6, longest=0.003 s, average=0.001 s; distance=16374 kB, estimate=47435 kB; lsn=C/35000080, redo lsn=C/35000028",postgres,null,[],null
+8428d2b6-a7cd-4aaf-893b-ef3b713bab85,"""2026-09-25T05:10:59.716Z""",,,00000,2026-09-25T05:10:59.716000,success,checkpoint starting: time,postgres,null,[],null
+8fd84b21-4a7a-40d7-bad2-d59d1d35a19b,"""2026-09-25T05:06:07.417Z""",,,00000,2026-09-25T05:06:07.417000,success,"checkpoint complete: wrote 83 buffers (0.3%); 0 WAL file(s) added, 0 removed, 3 recycled; write=8.320 s, sync=0.006 s, total=8.364 s; sync files=12, longest=0.004 s, average=0.001 s; distance=46940 kB, estimate=50886 kB; lsn=C/34007090, redo lsn=C/34002758",postgres,null,[],null
+6e1eca9a-35f2-4c74-92a3-0a3082d33916,"""2026-09-25T05:05:59.054Z""",,,00000,2026-09-25T05:05:59.054000,success,checkpoint starting: time,postgres,null,[],null
+1d628fda-2fe1-43c5-9a18-2104f1ef9905,"""2026-09-25T05:01:18.655Z""",,,00000,2026-09-25T05:01:18.655000,success,"checkpoint complete: wrote 195 buffers (0.7%); 0 WAL file(s) added, 0 removed, 3 recycled; write=19.514 s, sync=0.004 s, total=19.554 s; sync files=14, longest=0.003 s, average=0.001 s; distance=51325 kB, estimate=51325 kB; lsn=C/3126A9A0, redo lsn=C/3122B458",postgres,null,[],null
+7496702f-c05f-47bc-92e2-49df2c003658,"""2026-09-25T05:00:59.103Z""",,,00000,2026-09-25T05:00:59.103000,success,checkpoint starting: time,postgres,null,[],null
+cba94db4-e661-43dc-8889-4480211137b7,"""2026-09-25T05:00:30.031Z""",,,23505,2026-09-25T05:00:30.031000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+cd3e75da-6fd6-4426-9560-2f997bdc6313,"""2026-09-25T05:00:26.944Z""",,,23505,2026-09-25T05:00:26.944000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+62e6e7ff-a4f5-4d8f-b43c-7a44458e8388,"""2026-09-25T05:00:09.276Z""",,,00000,2026-09-25T05:00:09.276000,success,process 3711726 acquired ShareLock on transaction 76882 after 1365.016 ms,postgres,null,[],null
+a740d4af-fc00-4352-9be3-73258e10cfb2,"""2026-09-25T05:00:08.911Z""",,,00000,2026-09-25T05:00:08.911000,success,process 3711726 still waiting for ShareLock on transaction 76882 after 1000.157 ms,postgres,null,[],null
+af23441b-efbb-4734-8ed1-0c97713a092a,"""2026-09-25T05:00:03.652Z""",,,23505,2026-09-25T05:00:03.652000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+07a718fc-e2a5-43cb-b487-b770ff0f3a08,"""2026-09-25T04:59:59.049Z""",,,23505,2026-09-25T04:59:59.049000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+98a279ad-e17f-4aa0-80ad-eb0958022eb9,"""2026-09-25T04:59:28.412Z""",,,23505,2026-09-25T04:59:28.412000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+7d942ffb-baa3-4a4f-bdfa-14e2597fd806,"""2026-09-25T04:59:24.335Z""",,,42703,2026-09-25T04:59:24.335000,error,column users.email does not exist,postgres,null,[],null
+3b820ee8-f39b-415a-bf77-5a037a193f97,"""2026-09-25T04:46:05.233Z""",,,00000,2026-09-25T04:46:05.233000,success,"checkpoint complete: wrote 53 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=5.317 s, sync=0.005 s, total=5.344 s; sync files=10, longest=0.003 s, average=0.001 s; distance=32050 kB, estimate=45985 kB; lsn=C/2E00BF60, redo lsn=C/2E00BED0",postgres,null,[],null
+07d6033e-da93-4af2-a3cb-02576af1d820,"""2026-09-25T04:45:59.889Z""",,,00000,2026-09-25T04:45:59.889000,success,checkpoint starting: time,postgres,null,[],null
+1adebd64-91ca-4757-84b7-4b0f8662a18f,"""2026-09-25T04:41:12.574Z""",,,00000,2026-09-25T04:41:12.574000,success,"checkpoint complete: wrote 129 buffers (0.4%); 0 WAL file(s) added, 0 removed, 2 recycled; write=12.865 s, sync=0.004 s, total=12.893 s; sync files=7, longest=0.003 s, average=0.001 s; distance=33518 kB, estimate=47533 kB; lsn=C/2C0F3078, redo lsn=C/2C0BF2E8",postgres,null,[],null
+f56ceb2b-3a06-47a2-914c-25983c8b5d6f,"""2026-09-25T04:40:59.682Z""",,,00000,2026-09-25T04:40:59.682000,success,checkpoint starting: time,postgres,null,[],null
+afaa9034-00b8-4da7-8f46-3400f784e447,"""2026-09-25T04:36:20.344Z""",,,00000,2026-09-25T04:36:20.344000,success,"checkpoint complete: wrote 207 buffers (0.7%); 0 WAL file(s) added, 0 removed, 3 recycled; write=20.749 s, sync=0.004 s, total=20.783 s; sync files=28, longest=0.003 s, average=0.001 s; distance=49090 kB, estimate=49090 kB; lsn=C/2A0038F0, redo lsn=C/2A003860",postgres,null,[],null
+4d715925-35fe-4ba6-9d62-baf7547607ba,"""2026-09-25T04:35:59.562Z""",,,00000,2026-09-25T04:35:59.562000,success,checkpoint starting: time,postgres,null,[],null
+86f3a2da-580a-4ae1-ae6f-169602897279,"""2026-09-25T04:34:10.459Z""",,,23505,2026-09-25T04:34:10.459000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+b0f27307-bc7b-4824-b71c-cdb6656de00b,"""2026-09-25T04:31:13.154Z""",,,00000,2026-09-25T04:31:13.154000,success,"checkpoint complete: wrote 136 buffers (0.5%); 0 WAL file(s) added, 0 removed, 2 recycled; write=13.649 s, sync=0.005 s, total=13.681 s; sync files=16, longest=0.004 s, average=0.001 s; distance=32836 kB, estimate=47400 kB; lsn=C/27012D68, redo lsn=C/27012CD8",postgres,null,[],null
+9608b96b-db85-43bc-9251-37d76eb56058,"""2026-09-25T04:30:59.476Z""",,,00000,2026-09-25T04:30:59.476000,success,checkpoint starting: time,postgres,null,[],null
+4aa3313d-1b4b-410e-844f-a5b2074e6d66,"""2026-09-25T04:29:32.180Z""",,,42703,2026-09-25T04:29:32.180000,error,column users.email does not exist,postgres,null,[],null
+fd4a66a9-542b-4f2e-a7b8-f0fdeee02ec6,"""2026-09-25T04:26:06.090Z""",,,00000,2026-09-25T04:26:06.090000,success,"checkpoint complete: wrote 67 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=6.773 s, sync=0.004 s, total=6.809 s; sync files=24, longest=0.003 s, average=0.001 s; distance=49019 kB, estimate=49019 kB; lsn=C/25005080, redo lsn=C/25001B30",postgres,null,[],null
+27080ca0-e3e2-434c-a26f-ef50571ba6bb,"""2026-09-25T04:25:59.282Z""",,,00000,2026-09-25T04:25:59.282000,success,checkpoint starting: time,postgres,null,[],null
+37fc8c24-9d96-43d5-8ed3-2256696474b7,"""2026-09-25T04:22:46.041Z""",,,42703,2026-09-25T04:22:46.041000,error,column users.email does not exist,postgres,null,[],null
+c141a9bf-5d38-4882-8ece-a352b27b257c,"""2026-09-25T04:21:31.863Z""",,,42703,2026-09-25T04:21:31.863000,error,column users.email does not exist,postgres,null,[],null
+96407c7e-d7c7-4f77-baab-29a6aca6dc44,"""2026-09-25T04:21:06.860Z""",,,00000,2026-09-25T04:21:06.860000,success,"checkpoint complete: wrote 70 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=6.951 s, sync=0.004 s, total=6.979 s; sync files=19, longest=0.003 s, average=0.001 s; distance=32890 kB, estimate=48696 kB; lsn=C/22022ED0, redo lsn=C/22022E78",postgres,null,[],null
+3fc491de-d1da-4de6-8092-5f0f96c1c06e,"""2026-09-25T04:20:59.881Z""",,,00000,2026-09-25T04:20:59.881000,success,checkpoint starting: time,postgres,null,[],null
+e8ba78cf-a2aa-4781-a018-1d85ee5915fb,"""2026-09-25T04:16:04.509Z""",,,00000,2026-09-25T04:16:04.509000,success,"checkpoint complete: wrote 53 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=5.398 s, sync=0.004 s, total=5.429 s; sync files=15, longest=0.002 s, average=0.001 s; distance=49012 kB, estimate=50452 kB; lsn=C/20009708, redo lsn=C/20004660",postgres,null,[],null
+04199fb8-b889-40dc-a4df-4be9ecb6c327,"""2026-09-25T04:15:59.080Z""",,,00000,2026-09-25T04:15:59.080000,success,checkpoint starting: time,postgres,null,[],null
+85e3160b-e0dc-4cbe-a456-1acc37b6ad56,"""2026-09-25T04:15:25.505Z""",,,42703,2026-09-25T04:15:25.505000,error,column users.email does not exist,postgres,null,[],null
+590b205a-5c0b-4bae-beb8-9dcbdf0d1feb,"""2026-09-25T04:11:13.562Z""",,,42703,2026-09-25T04:11:13.562000,error,column users.email does not exist,postgres,null,[],null
+cf7cef64-3994-45e5-883d-1214c2dc0641,"""2026-09-25T04:11:03.570Z""",,,00000,2026-09-25T04:11:03.570000,success,"checkpoint complete: wrote 42 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.142 s, sync=0.005 s, total=4.176 s; sync files=15, longest=0.003 s, average=0.001 s; distance=32924 kB, estimate=50612 kB; lsn=C/1D02B2C8, redo lsn=C/1D027270",postgres,null,[],null
+3526ccc3-da22-429a-b1a3-e8d836faf6f5,"""2026-09-25T04:10:59.396Z""",,,00000,2026-09-25T04:10:59.396000,success,checkpoint starting: time,postgres,null,[],null
+563d1cd2-2616-41f8-829c-7af1b4028e30,"""2026-09-25T04:06:02.023Z""",,,00000,2026-09-25T04:06:02.023000,success,"checkpoint complete: wrote 23 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.313 s, sync=0.004 s, total=2.354 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49126 kB, estimate=52578 kB; lsn=C/1B000080, redo lsn=C/1B000028",postgres,null,[],null
+c50ba672-0c3c-455d-8cf2-814df5614a8d,"""2026-09-25T04:05:59.671Z""",,,00000,2026-09-25T04:05:59.671000,success,checkpoint starting: time,postgres,null,[],null
+42eb5ebf-c800-42be-8e02-a284cce7f61c,"""2026-09-25T04:04:50.156Z""",,,42703,2026-09-25T04:04:50.156000,error,column users.email does not exist,postgres,null,[],null
+ba7a46a1-0345-42b5-9c59-ebeed5195778,"""2026-09-25T04:01:24.579Z""",,,42703,2026-09-25T04:01:24.579000,error,column users.email does not exist,postgres,null,[],null
+1c9c12c6-07fb-4c3c-8ae3-71dae819fbf0,"""2026-09-25T04:01:04.239Z""",,,00000,2026-09-25T04:01:04.239000,success,"checkpoint complete: wrote 49 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=4.835 s, sync=0.004 s, total=4.863 s; sync files=9, longest=0.003 s, average=0.001 s; distance=32782 kB, estimate=52961 kB; lsn=C/18006828, redo lsn=C/180067D0",postgres,null,[],null
+e4589aa8-3bcb-4c80-b42f-16b92ac24c0c,"""2026-09-25T04:00:59.377Z""",,,00000,2026-09-25T04:00:59.377000,success,checkpoint starting: time,postgres,null,[],null
+97bb444d-0929-4420-bdb4-9263a76751e6,"""2026-09-25T03:56:01.993Z""",,,00000,2026-09-25T03:56:01.993000,success,"checkpoint complete: wrote 25 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.421 s, sync=0.004 s, total=2.450 s; sync files=6, longest=0.003 s, average=0.001 s; distance=49134 kB, estimate=55204 kB; lsn=C/160046D8, redo lsn=C/16002C40",postgres,null,[],null
+0aa00c79-c85e-4a87-ac32-4cf8b9490807,"""2026-09-25T03:55:59.544Z""",,,00000,2026-09-25T03:55:59.544000,success,checkpoint starting: time,postgres,null,[],null
+50246d21-15f7-4bbf-a7b1-5e7e9da8af27,"""2026-09-25T03:51:02.129Z""",,,00000,2026-09-25T03:51:02.129000,success,"checkpoint complete: wrote 29 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.843 s, sync=0.004 s, total=2.889 s; sync files=6, longest=0.003 s, average=0.001 s; distance=32796 kB, estimate=55878 kB; lsn=C/13008188, redo lsn=C/130070E0",postgres,null,[],null
+3a49d675-bd20-48ba-a24b-651dd865b5dd,"""2026-09-25T03:50:59.243Z""",,,00000,2026-09-25T03:50:59.243000,success,checkpoint starting: time,postgres,null,[],null
+054443e2-ec08-4c4c-a840-99f80fe8b89b,"""2026-09-25T03:46:07.874Z""",,,00000,2026-09-25T03:46:07.874000,success,"checkpoint complete: wrote 83 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=8.247 s, sync=0.004 s, total=8.271 s; sync files=13, longest=0.003 s, average=0.001 s; distance=32743 kB, estimate=58443 kB; lsn=C/110000B8, redo lsn=C/11000028",postgres,null,[],null
+6bf7c3e7-dbcb-424d-b1bd-5a814f5c895b,"""2026-09-25T03:45:59.603Z""",,,00000,2026-09-25T03:45:59.603000,success,checkpoint starting: time,postgres,null,[],null
+22b5c304-555f-48b1-92e4-c80752d89b06,"""2026-09-25T03:45:43.336Z""",,,42703,2026-09-25T03:45:43.336000,error,column users.email does not exist,postgres,null,[],null
+199e3e3b-dcda-4f45-8a49-f05ba32adc35,"""2026-09-25T03:45:42.448Z""",,,42703,2026-09-25T03:45:42.448000,error,column users.email does not exist,postgres,null,[],null
+64fad252-992a-48f8-8fa5-9a78f9fd2aaa,"""2026-09-25T03:41:04.174Z""",,,00000,2026-09-25T03:41:04.174000,success,"checkpoint complete: wrote 49 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=5.032 s, sync=0.004 s, total=5.072 s; sync files=24, longest=0.003 s, average=0.001 s; distance=32789 kB, estimate=61298 kB; lsn=C/F006228, redo lsn=C/F0061D0",postgres,null,[],null
+1e6c5b2c-c7fd-4372-b98e-d4220ba1e1ef,"""2026-09-25T03:40:59.106Z""",,,00000,2026-09-25T03:40:59.106000,success,checkpoint starting: time,postgres,null,[],null
+edb226a7-a092-490d-b9bb-4e93e71f6f16,"""2026-09-25T03:39:32.952Z""",,,00000,2026-09-25T03:39:32.952000,success,"statement: SET statement_timeout='58s'; SET idle_session_timeout='58s';
+
+CREATE OR REPLACE FUNCTION pg_temp.count_estimate(
+    query text
+) RETURNS integer LANGUAGE plpgsql AS $$
+DECLARE
+    plan jsonb;
+BEGIN
+    EXECUTE 'EXPLAIN (FORMAT JSON)' || query INTO plan;
+    RETURN plan->0->'Plan'->'Plan Rows';
+END;
+$$;
+
+
+with approximation as (
+    select
+      reltuples as estimate,
+      -- Whole-tree heap size. A partitioned PARENT (relkind 'p') has no storage
+      -- of its own, so its size is the sum over pg_partition_tree; every other
+      -- relkind uses its own heap directly (pg_partition_tree returns NO rows
+      -- for a plain non-partitioned table, so it cannot be used unconditionally).
+      -- Views/foreign tables yield 0 (-> exact count, unchanged behavior).
+      case when relkind = 'p'
+        then (select coalesce(sum(pg_relation_size(relid)), 0) from pg_partition_tree(oid))
+        else pg_relation_size(oid)
+      end as bytes
+    from pg_class
+    where oid = 26240
+)
+select
+  case
+    when estimate = -1 and bytes > 10000000 then pg_temp.count_estimate('select * from public.fai_master_profiles')
+    when estimate > 50000 then estimate
+    else (select count(*) from public.fai_master_profiles)
+  end as count,
+  (estimate > 50000 or (estimate = -1 and bytes > 10000000)) as is_estimate
+from approximation;
+
+
+-- source: dashboard
+-- user: session:9e9a5216-4ff4-44fb-8e1c-0b76b1dbe67f
+-- date: 2026-09-25T03:39:32.490Z",postgres,null,[],null
+ec9b906d-b91f-445a-9c2e-ec0c307fbbbb,"""2026-09-25T03:39:20.847Z""",,,00000,2026-09-25T03:39:20.847000,success,"statement: SET statement_timeout='58s'; SET idle_session_timeout='58s';
+
+CREATE OR REPLACE FUNCTION pg_temp.count_estimate(
+    query text
+) RETURNS integer LANGUAGE plpgsql AS $$
+DECLARE
+    plan jsonb;
+BEGIN
+    EXECUTE 'EXPLAIN (FORMAT JSON)' || query INTO plan;
+    RETURN plan->0->'Plan'->'Plan Rows';
+END;
+$$;
+
+
+with approximation as (
+    select
+      reltuples as estimate,
+      -- Whole-tree heap size. A partitioned PARENT (relkind 'p') has no storage
+      -- of its own, so its size is the sum over pg_partition_tree; every other
+      -- relkind uses its own heap directly (pg_partition_tree returns NO rows
+      -- for a plain non-partitioned table, so it cannot be used unconditionally).
+      -- Views/foreign tables yield 0 (-> exact count, unchanged behavior).
+      case when relkind = 'p'
+        then (select coalesce(sum(pg_relation_size(relid)), 0) from pg_partition_tree(oid))
+        else pg_relation_size(oid)
+      end as bytes
+    from pg_class
+    where oid = 17546
+)
+select
+  case
+    when estimate = -1 and bytes > 10000000 then pg_temp.count_estimate('select * from public.users')
+    when estimate > 50000 then estimate
+    else (select count(*) from public.users)
+  end as count,
+  (estimate > 50000 or (estimate = -1 and bytes > 10000000)) as is_estimate
+from approximation;
+
+
+-- source: dashboard
+-- user: session:9e9a5216-4ff4-44fb-8e1c-0b76b1dbe67f
+-- date: 2026-09-25T03:39:20.388Z",postgres,null,[],null
+0fd5d8ae-1205-42b8-8bac-25335ab4e840,"""2026-09-25T03:36:09.748Z""",,,00000,2026-09-25T03:36:09.748000,success,"checkpoint complete: wrote 102 buffers (0.4%); 0 WAL file(s) added, 0 removed, 4 recycled; write=10.323 s, sync=0.005 s, total=10.363 s; sync files=12, longest=0.004 s, average=0.001 s; distance=64466 kB, estimate=64466 kB; lsn=C/D000B58, redo lsn=C/D000AC8",postgres,null,[],null
+a696e516-3d11-4cc7-ae0c-d0e92045c947,"""2026-09-25T03:35:59.386Z""",,,00000,2026-09-25T03:35:59.386000,success,checkpoint starting: time,postgres,null,[],null
+4f9455bb-5b14-4b88-83b5-91d53250a473,"""2026-09-25T03:23:32.454Z""",,,42703,2026-09-25T03:23:32.454000,error,column users.email does not exist,postgres,null,[],null
+69903e4f-5854-420d-8198-9d09ff826bf2,"""2026-09-25T03:21:31.195Z""",,,00000,2026-09-25T03:21:31.195000,success,"checkpoint complete: wrote 318 buffers (1.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=31.868 s, sync=0.002 s, total=31.889 s; sync files=9, longest=0.002 s, average=0.001 s; distance=33840 kB, estimate=42415 kB; lsn=C/A000060, redo lsn=C/910C1F0",postgres,null,[],null
+9f50f722-7a9d-414b-bacc-05a0ef7019c8,"""2026-09-25T03:20:59.306Z""",,,00000,2026-09-25T03:20:59.306000,success,checkpoint starting: time,postgres,null,[],null
+6f8abd23-0e06-40ce-9d00-14afadb3526f,"""2026-09-25T03:20:00.381Z""",,,23505,2026-09-25T03:20:00.381000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+40eed152-aa19-4f0a-81dd-4c151969b975,"""2026-09-25T03:19:22.424Z""",,,23505,2026-09-25T03:19:22.424000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+a10b336b-0ee9-4872-8e0c-9de0545070ec,"""2026-09-25T03:16:06.981Z""",,,00000,2026-09-25T03:16:06.981000,success,"checkpoint complete: wrote 75 buffers (0.3%); 0 WAL file(s) added, 0 removed, 2 recycled; write=7.454 s, sync=0.005 s, total=7.482 s; sync files=11, longest=0.004 s, average=0.001 s; distance=32362 kB, estimate=43368 kB; lsn=C/7000080, redo lsn=C/7000028",postgres,null,[],null
+9802a211-1d3e-4224-933b-37b88757f1fc,"""2026-09-25T03:15:59.500Z""",,,00000,2026-09-25T03:15:59.500000,success,checkpoint starting: time,postgres,null,[],null
+7ec4cc85-ae6e-4535-8fd9-19bede496508,"""2026-09-25T03:14:36.311Z""",,,42703,2026-09-25T03:14:36.311000,error,column users.email does not exist,postgres,null,[],null
+4bf73efb-4a36-45bb-bbc9-2e0e1e496a43,"""2026-09-25T03:14:35.489Z""",,,42703,2026-09-25T03:14:35.489000,error,column users.email does not exist,postgres,null,[],null
+13aa6a2e-bf05-48b6-9616-cb6a27107860,"""2026-09-25T03:11:12.310Z""",,,23505,2026-09-25T03:11:12.310000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+23ce4b9b-6e64-40da-be37-4cb081c8ef71,"""2026-09-25T03:10:59.747Z""",,,00000,2026-09-25T03:10:59.747000,success,checkpoint starting: time,postgres,null,[],null
+007eed87-27ed-4b45-9193-d0b2f7ca4420,"""2026-09-25T03:09:06.035Z""",,,23505,2026-09-25T03:09:06.035000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+ed7043cd-a5d8-4c38-bfdf-93a2bb9a9e8b,"""2026-09-25T03:07:23.694Z""",,,23505,2026-09-25T03:07:23.694000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+d13fa524-2278-4821-b789-ea15e48b916d,"""2026-09-25T03:06:05.392Z""",,,00000,2026-09-25T03:06:05.392000,success,"checkpoint complete: wrote 54 buffers (0.2%); 0 WAL file(s) added, 0 removed, 1 recycled; write=5.396 s, sync=0.004 s, total=5.424 s; sync files=8, longest=0.003 s, average=0.001 s; distance=16771 kB, estimate=45903 kB; lsn=C/3060EC0, redo lsn=C/3060E68",postgres,null,[],null
+df025ac2-3772-4a97-8060-77ceb7af65db,"""2026-09-25T03:05:59.969Z""",,,00000,2026-09-25T03:05:59.969000,success,checkpoint starting: time,postgres,null,[],null
+eda3bccd-8d79-4860-bea7-bf056d0b4195,"""2026-09-25T03:05:25.051Z""",,,23505,2026-09-25T03:05:25.051000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+81ec0e30-d6bd-4595-bb76-4a5fb0c6dc11,"""2026-09-25T02:56:03.542Z""",,,00000,2026-09-25T02:56:03.542000,success,"checkpoint complete: wrote 41 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=4.149 s, sync=0.004 s, total=4.183 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49140 kB, estimate=49140 kB; lsn=C/2000080, redo lsn=C/2000028",postgres,null,[],null
+efbcbe4b-03ca-4a89-8337-672d3eb06e47,"""2026-09-25T02:55:59.361Z""",,,00000,2026-09-25T02:55:59.361000,success,checkpoint starting: time,postgres,null,[],null
+23bc7296-4420-41ae-8c19-178ff477e32e,"""2026-09-25T02:51:16.639Z""",,,42703,2026-09-25T02:51:16.639000,error,column users.email does not exist,postgres,null,[],null
+88ed47fe-4791-4c0f-b299-295ea381fc71,"""2026-09-25T02:51:02.804Z""",,,00000,2026-09-25T02:51:02.804000,success,"checkpoint complete: wrote 30 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=2.919 s, sync=0.005 s, total=2.945 s; sync files=7, longest=0.004 s, average=0.001 s; distance=32772 kB, estimate=47520 kB; lsn=B/FF002F58, redo lsn=B/FF002EC8",postgres,null,[],null
+4553c98f-918b-4b35-ba08-8a36887df593,"""2026-09-25T02:50:59.860Z""",,,00000,2026-09-25T02:50:59.860000,success,checkpoint starting: time,postgres,null,[],null
+d54158ed-a53f-40e0-b282-da30d3656acf,"""2026-09-25T02:46:01.532Z""",,,00000,2026-09-25T02:46:01.532000,success,"checkpoint complete: wrote 16 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=1.518 s, sync=0.004 s, total=1.549 s; sync files=8, longest=0.003 s, average=0.001 s; distance=49159 kB, estimate=49159 kB; lsn=B/FD003350, redo lsn=B/FD001D68",postgres,null,[],null
+45b070a9-8ad1-4c16-9463-e4de9558bad4,"""2026-09-25T02:45:59.983Z""",,,00000,2026-09-25T02:45:59.983000,success,checkpoint starting: time,postgres,null,[],null
+a36b888f-a821-4168-9d79-d0cc4453cec9,"""2026-09-25T02:41:21.691Z""",,,00000,2026-09-25T02:41:21.691000,success,"checkpoint complete: wrote 223 buffers (0.8%); 0 WAL file(s) added, 0 removed, 2 recycled; write=22.316 s, sync=0.005 s, total=22.346 s; sync files=10, longest=0.005 s, average=0.001 s; distance=32767 kB, estimate=42189 kB; lsn=B/FB000060, redo lsn=B/FA000028",postgres,null,[],null
+0c14629c-cf6c-443b-8805-fbce6d1378f7,"""2026-09-25T02:40:59.346Z""",,,00000,2026-09-25T02:40:59.346000,success,checkpoint starting: time,postgres,null,[],null
+25a00703-247c-4a4d-bd9b-d1440272c3ff,"""2026-09-25T02:37:54.638Z""",,,23505,2026-09-25T02:37:54.638000,error,"duplicate key value violates unique constraint ""uq_fai_master_model_pn""",postgres,null,[],null
+0c494484-51d2-4c84-9fcf-994eaef3d97d,"""2026-09-25T02:36:05.987Z""",,,00000,2026-09-25T02:36:05.987000,success,"checkpoint complete: wrote 63 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=6.237 s, sync=0.004 s, total=6.265 s; sync files=11, longest=0.003 s, average=0.001 s; distance=32768 kB, estimate=43236 kB; lsn=B/F80000B8, redo lsn=B/F8000060",postgres,null,[],null
+f713d53a-a8ad-47e7-80fa-cc07140d759e,"""2026-09-25T02:35:59.724Z""",,,00000,2026-09-25T02:35:59.724000,success,checkpoint starting: time,postgres,null,[],null
+a684273c-4524-4a01-ab54-af2e7de44aac,"""2026-09-25T02:31:45.027Z""",,,42703,2026-09-25T02:31:45.027000,error,column users.email does not exist,postgres,null,[],null
+ec7819a1-50de-4f10-87cb-99b54ca24b6b,"""2026-09-25T02:26:00.134Z""",,,00000,2026-09-25T02:26:00.134000,success,"checkpoint complete: wrote 9 buffers (0.0%); 0 WAL file(s) added, 0 removed, 1 recycled; write=0.813 s, sync=0.006 s, total=0.838 s; sync files=6, longest=0.004 s, average=0.001 s; distance=16129 kB, estimate=44399 kB; lsn=B/F60000B8, redo lsn=B/F6000060",postgres,null,[],null
+4fe8c7da-ba08-43e1-baa4-8510dcea8ab2,"""2026-09-25T02:25:59.298Z""",,,00000,2026-09-25T02:25:59.298000,success,checkpoint starting: time,postgres,null,[],null
+8573e317-f349-4bb7-8909-4dd7d5b86c09,"""2026-09-25T02:21:05.989Z""",,,00000,2026-09-25T02:21:05.989000,success,"checkpoint complete: wrote 69 buffers (0.2%); 0 WAL file(s) added, 0 removed, 2 recycled; write=6.838 s, sync=0.004 s, total=6.858 s; sync files=19, longest=0.003 s, average=0.001 s; distance=33009 kB, estimate=47541 kB; lsn=B/F503FAA0, redo lsn=B/F503FA48",postgres,null,[],null
+f6c462e0-d43a-4993-b9d1-e8b3114b4b12,"""2026-09-25T02:20:59.132Z""",,,00000,2026-09-25T02:20:59.132000,success,checkpoint starting: time,postgres,null,[],null
+b3d32ea4-0d18-4b50-90bc-94917af37ac6,"""2026-09-25T02:19:54.661Z""",,,23505,2026-09-25T02:19:54.661000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+0fdbc687-a3e3-4227-a31a-123a5df7506d,"""2026-09-25T02:18:05.150Z""",,,42703,2026-09-25T02:18:05.150000,error,column users.email does not exist,postgres,null,[],null
+8974f317-e454-40de-9248-93d6b2438f62,"""2026-09-25T02:17:46.607Z""",,,42703,2026-09-25T02:17:46.607000,error,column users.email does not exist,postgres,null,[],null
+abc05a5b-9a8e-4cca-8782-e191a9866f6e,"""2026-09-25T02:16:05.783Z""",,,00000,2026-09-25T02:16:05.783000,success,"checkpoint complete: wrote 65 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=6.456 s, sync=0.004 s, total=6.490 s; sync files=19, longest=0.003 s, average=0.001 s; distance=49155 kB, estimate=49155 kB; lsn=B/F30054F8, redo lsn=B/F30034F8",postgres,null,[],null
+c6c79a55-0000-46e1-bf47-fdf138809fda,"""2026-09-25T02:15:59.294Z""",,,00000,2026-09-25T02:15:59.294000,success,checkpoint starting: time,postgres,null,[],null
+6731ca6c-a540-4690-8ff1-938d66b8fe98,"""2026-09-25T02:11:13.442Z""",,,42703,2026-09-25T02:11:13.442000,error,column users.email does not exist,postgres,null,[],null
+2b6f6e8c-ca2c-4ca6-a76b-8335cae354c0,"""2026-09-25T02:11:12.907Z""",,,00000,2026-09-25T02:11:12.907000,success,"checkpoint complete: wrote 139 buffers (0.5%); 0 WAL file(s) added, 0 removed, 2 recycled; write=13.870 s, sync=0.004 s, total=13.900 s; sync files=9, longest=0.003 s, average=0.001 s; distance=32769 kB, estimate=47101 kB; lsn=B/F0002680, redo lsn=B/F00025F0",postgres,null,[],null
+9cdfc760-4180-40a8-a831-d55ab51fb2f0,"""2026-09-25T02:10:59.008Z""",,,00000,2026-09-25T02:10:59.008000,success,checkpoint starting: time,postgres,null,[],null
+5d3a66aa-d754-4602-b665-e7d712ba64b6,"""2026-09-25T02:06:08.669Z""",,,00000,2026-09-25T02:06:08.669000,success,"checkpoint complete: wrote 102 buffers (0.4%); 0 WAL file(s) added, 0 removed, 3 recycled; write=10.239 s, sync=0.005 s, total=10.279 s; sync files=17, longest=0.004 s, average=0.001 s; distance=48693 kB, estimate=48693 kB; lsn=B/EE004498, redo lsn=B/EE0020D0",postgres,null,[],null
+03ece5e6-f803-436d-bd13-33c1c76a7f82,"""2026-09-25T02:05:59.129Z""",,,23505,2026-09-25T02:05:59.129000,error,"duplicate key value violates unique constraint ""audits_pkey""",postgres,null,[],null
+8ca7868b-528b-41b3-b549-2cf2bdb58dfe,"""2026-09-25T02:05:58.392Z""",,,00000,2026-09-25T02:05:58.392000,success,checkpoint starting: time,postgres,null,[],null
+62dcb3c3-0b6d-49b9-ba71-d31757c6e515,"""2026-09-25T02:01:10.025Z""",,,00000,2026-09-25T02:01:10.025000,success,"checkpoint complete: wrote 117 buffers (0.4%); 0 WAL file(s) added, 0 removed, 2 recycled; write=11.690 s, sync=0.005 s, total=11.716 s; sync files=27, longest=0.004 s, average=0.001 s; distance=33219 kB, estimate=47562 kB; lsn=B/EB0778C0, redo lsn=B/EB074A80",postgres,null,[],null
+c792e84e-8566-4fd4-b5fc-293d11f31c67,"""2026-09-25T02:00:58.310Z""",,,00000,2026-09-25T02:00:58.310000,success,checkpoint starting: time,postgres,null,[],null
+e91c1edc-8c07-40ab-8607-cf514c34d0cf,"""2026-09-25T01:56:00.948Z""",,,00000,2026-09-25T01:56:00.948000,success,"checkpoint complete: wrote 24 buffers (0.1%); 0 WAL file(s) added, 0 removed, 3 recycled; write=2.471 s, sync=0.004 s, total=2.502 s; sync files=10, longest=0.003 s, average=0.001 s; distance=49156 kB, estimate=49156 kB; lsn=B/E9003C70, redo lsn=B/E9003C18",postgres,null,[],null
+de7d7f6e-494b-40a0-a2bd-77fe6725c749,"""2026-09-25T01:55:58.447Z""",,,00000,2026-09-25T01:55:58.447000,success,checkpoint starting: time,postgres,null,[],null
+c09ec79f-5b3f-4d5d-b46f-e23846ff5d9a,"""2026-09-25T01:54:41.750Z""",,,42703,2026-09-25T01:54:41.750000,error,column users.email does not exist,postgres,null,[],null
+33e229bb-0b14-40ad-9143-35ecbee55387,"""2026-09-25T01:51:00.146Z""",,,00000,2026-09-25T01:51:00.146000,success,"checkpoint complete: wrote 20 buffers (0.1%); 0 WAL file(s) added, 0 removed, 2 recycled; write=1.933 s, sync=0.004 s, total=1.977 s; sync files=7, longest=0.003 s, average=0.001 s; distance=32339 kB, estimate=47858 kB; lsn=B/E6004458, redo lsn=B/E6002A60",postgres,null,[],null
+e4164de0-0c29-4614-ae82-8bd25e58d559,"""2026-09-25T01:50:58.169Z""",,,00000,2026-09-25T01:50:58.169000,success,checkpoint starting: time,postgres,null,[],null
+1bbc0d1c-f22f-4ae4-b4c5-47308a2c7560,"""2026-09-25T01:46:23.818Z""",,,42703,2026-09-25T01:46:23.818000,error,column users.email does not exist,postgres,null,[],null
+8c6637bf-9392-4879-8cd1-f29b8aa28377,"""2026-09-25T01:46:04.830Z""",,,00000,2026-09-25T01:46:04.830000,success,"checkpoint complete: wrote 65 buffers (0.2%); 0 WAL file(s) added, 0 removed, 3 recycled; write=6.481 s, sync=0.003 s, total=6.517 s; sync files=10, longest=0.002 s, average=0.001 s; distance=49582 kB, estimate=49582 kB; lsn=B/E406DDD0, redo lsn=B/E406DD40",postgres,null,[],null
+3127b9eb-9514-44c9-992a-d7c4d73c0003,"""2026-09-25T01:45:58.314Z""",,,00000,2026-09-25T01:45:58.314000,success,checkpoint starting: time,postgres,null,[],null

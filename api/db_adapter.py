@@ -355,3 +355,70 @@ def unified_db_query(endpoint: str, method: str = "GET", data: dict = None, para
         _cache_invalidate(endpoint)
     return result
 
+def supabase_paginated_query(endpoint, params="", page_size=900):
+    if params:
+        param_parts = [p for p in params.split('&') if not p.startswith('limit=') and not p.startswith('offset=')]
+        base_params = "&".join(param_parts)
+    else:
+        base_params = ""
+    
+    all_rows = []
+    offset = 0
+    max_total_rows = 5000
+    
+    while True:
+        page_params = f"{base_params}&offset={offset}&limit={page_size}".strip('&')
+        page_rows = supabase_rest_fallback(endpoint, method="GET", params=page_params)
+        
+        if not page_rows or not isinstance(page_rows, list):
+            break
+            
+        all_rows.extend(page_rows)
+        
+        if len(page_rows) < page_size:
+            break
+            
+        offset += page_size
+        
+        if len(all_rows) >= max_total_rows:
+            break
+            
+    return all_rows
+
+def unified_db_query_all(endpoint, params=""):
+    pool = get_pg_pool()
+    if pool:
+        if params:
+            param_parts = [p for p in params.split('&') if not p.startswith('limit=')]
+            base_params = "&".join(param_parts)
+            local_params = f"{base_params}&limit=10000".strip('&')
+        else:
+            local_params = "limit=10000"
+            
+        sql, sql_params = parse_postgrest_query(endpoint, "GET", None, local_params)
+        if sql:
+            conn = None
+            try:
+                conn = pool.getconn()
+                cur = conn.cursor(cursor_factory=RealDictCursor)
+                cur.execute(sql, sql_params)
+                rows = cur.fetchall()
+                conn.commit()
+                cur.close()
+                pool.putconn(conn)
+                res = []
+                for r in rows:
+                    row_dict = {}
+                    for k, v in r.items():
+                        row_dict[k] = json_serial(v)
+                    res.append(row_dict)
+                return res
+            except Exception:
+                if conn:
+                    try:
+                        conn.rollback()
+                        pool.putconn(conn)
+                    except Exception:
+                        pass
+                        
+    return supabase_paginated_query(endpoint, params)

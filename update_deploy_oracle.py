@@ -1,21 +1,15 @@
-import tarfile
+import os, subprocess, sys
+
+sys.stdout.reconfigure(encoding='utf-8')
+res = subprocess.run(['git', 'ls-files', '-m'], capture_output=True, text=True)
+files_to_update = [f for f in res.stdout.split('\n') if f and f != 'deploy_oracle.py' and f != 'update_deploy_oracle.py']
+
+with open('deploy_oracle.py', 'w', encoding='utf-8') as f:
+    f.write('''import tarfile
 import subprocess
 import os
 
-files_to_update = [
-    'FAI/api/fai_api.py',
-    'FAI/public/js/checklist_data.js',
-    'FAI/public/js/fai_app.js',
-    'FAI/public/sw.js',
-    'api/db_adapter.py',
-    'api/index.py',
-    'api/stations_master.json',
-    'public/index.html',
-    'public/js/app.js',
-    'public/js/checklist_data.js',
-    'public/sw.js',
-    'stations_master.json'
-]
+files_to_update = {0}
 tar_path = 'dist_update_fai.tar.gz'
 
 print(f"Creating {tar_path}...")
@@ -55,3 +49,5 @@ if ssh_res.stderr:
     print("SSH STDERR:\\n" + ssh_res.stderr)
 
 print("Oracle VM Deployment Complete!")
+'''.format(repr(files_to_update)))
+print('deploy_oracle.py updated.')

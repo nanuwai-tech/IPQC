@@ -190,7 +190,7 @@
     }
   ],
   "notes": "Approved SMT Golden Master Reference",
-  "is_active": true,
+  "is_active": false,
   "updated_at": "2026-09-25T03:18:33.711962+00:00",
   "message": "Pre-warmed from database cache"
 }

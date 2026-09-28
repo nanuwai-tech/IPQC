@@ -37,6 +37,14 @@ import re
 # Factory operational timezone (Thailand / Bangkok UTC+7)
 FACTORY_TZ = timezone(timedelta(hours=7))
 
+def get_production_date(dt_str: Optional[str]) -> str:
+    ldt = to_local_datetime(dt_str)
+    if not ldt:
+        return ""
+    if ldt.hour < 8:
+        return (ldt - timedelta(days=1)).strftime("%Y-%m-%d")
+    return ldt.strftime("%Y-%m-%d")
+
 def to_local_datetime(dt_str: Optional[str]) -> Optional[datetime]:
     if not dt_str:
         return None
@@ -173,10 +181,13 @@ def verify_session_token(token: str) -> Optional[dict]:
     except Exception:
         return None
 
-from api.db_adapter import unified_db_query
+from api.db_adapter import unified_db_query, unified_db_query_all
 
 def supabase_db_query(endpoint: str, method: str = "GET", data: dict = None, params: str = ""):
     return unified_db_query(endpoint, method, data, params)
+
+def supabase_db_query_all(endpoint: str, params: str = ""):
+    return unified_db_query_all(endpoint, params)
 
 # In-Memory Session & User Cache Fallback
 SESSIONS_DB = {}
@@ -698,7 +709,14 @@ def get_stations(
         tb_enc = urllib.parse.quote(time_block)
         
         # Optimize query by passing date filters directly to Supabase to save egress!
-        valid_audits = supabase_db_query("audits", params=f"time_block=eq.{tb_enc}&audit_time=gte.{date}T00:00:00&audit_time=lte.{date}T23:59:59&select=*")
+        from datetime import timedelta
+        try:
+            t_dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+            n_dt = t_dt + timedelta(days=1)
+            n_str = n_dt.strftime("%Y-%m-%d")
+        except:
+            n_str = date
+        valid_audits = supabase_db_query("audits", params=f"time_block=eq.{tb_enc}&audit_time=gte.{date}T00:00:00&audit_time=lte.{n_str}T23:59:59&select=*")
         if not isinstance(valid_audits, list): valid_audits = []
         
         for s in results:
@@ -718,7 +736,7 @@ def get_factory_phases():
             "id": "Phase 1",
             "name": "Phase 1 (Building A)",
             "smt_lines": ["T1", "T2", "T3", "T4", "P1", "P2", "P5"],
-            "dip_lines": ["DIP51", "DIP1", "DIP3"],
+            "dip_lines": ["DIP51", "DIP1", "DIP2"],
             "total_smt_stations": 70,
             "total_dip_stations": 33
         },
@@ -726,7 +744,7 @@ def get_factory_phases():
             "id": "Phase 2",
             "name": "Phase 2 (Building B)",
             "smt_lines": ["P6", "P7", "T5", "P8"],
-            "dip_lines": ["DIP52", "DIP2"],
+            "dip_lines": ["DIP52", "DIP3"],
             "total_smt_stations": 40,
             "total_dip_stations": 22
         }
@@ -735,8 +753,8 @@ def get_factory_phases():
 @router.get("/factory/lines")
 def get_factory_lines():
     phases = [
-        {"phase": "Phase 1", "smt": ["T1", "T2", "T3", "T4", "P1", "P2", "P5"], "dip": ["DIP51", "DIP1", "DIP3"]},
-        {"phase": "Phase 2", "smt": ["P6", "P7", "T5", "P8"], "dip": ["DIP52", "DIP2"]}
+        {"phase": "Phase 1", "smt": ["T1", "T2", "T3", "T4", "P1", "P2", "P5"], "dip": ["DIP51", "DIP1", "DIP2"]},
+        {"phase": "Phase 2", "smt": ["P6", "P7", "T5", "P8"], "dip": ["DIP52", "DIP3"]}
     ]
     lines_list = []
     for p in phases:
@@ -935,8 +953,15 @@ def get_audits(
     filters = []
     
     if date:
+        from datetime import timedelta
+        try:
+            t_dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+            n_dt = t_dt + timedelta(days=1)
+            n_str = n_dt.strftime("%Y-%m-%d")
+        except:
+            n_str = date
         filters.append(f"audit_time=gte.{date}T00:00:00")
-        filters.append(f"audit_time=lte.{date}T23:59:59")
+        filters.append(f"audit_time=lte.{n_str}T23:59:59")
     if line_name and line_name != "All Lines":
         filters.append(f"line_name=eq.{urllib.parse.quote(line_name)}")
     if model_no:
@@ -962,22 +987,22 @@ def get_dashboard_stats(
     date: Optional[str] = None,
     shift: Optional[str] = None
 ):
-    from datetime import datetime
+    from datetime import datetime, timedelta
 
-    # 1. Available dates discovery
-    recent_audits = supabase_db_query("audits", params="select=audit_time&order=audit_time.desc&limit=500")
+    # 1. Available dates discovery based on factory production dates (UTC+7 Thailand)
+    recent_audits = supabase_db_query("audits", params="select=audit_time&order=audit_time.desc&limit=1000")
     available_dates = []
     if isinstance(recent_audits, list):
         for a in recent_audits:
             t = a.get("audit_time", "")
-            if t and len(t) >= 10:
-                d_str = t[:10]
-                if d_str not in available_dates:
-                    available_dates.append(d_str)
+            if t:
+                p_date = get_production_date(t)
+                if p_date and p_date not in available_dates:
+                    available_dates.append(p_date)
 
     target_date = date
     if not target_date:
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_str = get_production_date(datetime.now(FACTORY_TZ).isoformat())
         if today_str in available_dates:
             target_date = today_str
         elif available_dates:
@@ -985,25 +1010,46 @@ def get_dashboard_stats(
         else:
             target_date = today_str
 
-    # 2. Query audits for the target date — only fetch columns needed for stats
-    # (avoids pulling any future large fields; saves ~80 KB per dashboard load)
+    # 2. Query audits spanning target production date (covers full 24h factory day in UTC)
     _AUDIT_STATS_COLS = (
         "id,line_name,model_no,audit_time,overall_status,"
         "pass_count,fail_count,na_count,shift,time_block,auditor,work_order"
     )
+    try:
+        t_dt = datetime.strptime(target_date, "%Y-%m-%d")
+        next_dt = t_dt + timedelta(days=2)
+        next_date_str = next_dt.strftime("%Y-%m-%d")
+    except Exception:
+        next_date_str = target_date
+
     param_str = (
         f"audit_time=gte.{target_date}T00:00:00"
-        f"&audit_time=lte.{target_date}T23:59:59"
+        f"&audit_time=lte.{next_date_str}T02:00:00"
         f"&select={_AUDIT_STATS_COLS}"
-        f"&order=audit_time.asc&limit=2000"
+        f"&order=audit_time.desc"
     )
-    audits = supabase_db_query("audits", params=param_str)
-    if not isinstance(audits, list):
-        audits = []
+    
+    raw_audits = supabase_db_query_all("audits", params=param_str)
+    if not isinstance(raw_audits, list):
+        raw_audits = []
+
+    # Filter to exact production date in Thailand timezone
+    audits = [a for a in raw_audits if get_production_date(a.get("audit_time")) == target_date]
 
     # Filter by shift if specified and not 'all'
     if shift and shift.lower() != 'all':
-        audits = [a for a in audits if a.get("shift", "").lower() == shift.lower()]
+        s_lower = shift.lower()
+        if "night" in s_lower:
+            audits = [
+                a for a in audits 
+                if "night" in a.get("shift", "").lower() 
+                or (to_local_datetime(a.get("audit_time")) and (to_local_datetime(a.get("audit_time")).hour < 8 or to_local_datetime(a.get("audit_time")).hour >= 20))
+            ]
+        elif "day" in s_lower:
+            audits = [
+                a for a in audits 
+                if "day" in a.get("shift", "").lower() and not ("night" in a.get("shift", "").lower())
+            ]
 
     # 3. Known lines and station totals from STATIONS_DB
     factory_lines = {}
@@ -1021,12 +1067,8 @@ def get_dashboard_stats(
     total_factory_lines = len(factory_lines) if factory_lines else 16
     total_factory_stations = sum(l["total_stations"] for l in factory_lines.values()) if factory_lines else 165
 
-    # 4. Standard 2-hour time blocks across 24h
+    # 4. Standard 2-hour time blocks across 24h factory day
     all_time_blocks = [
-        {"block": "00:00 - 02:00", "shift": "Night Shift", "start_h": 0},
-        {"block": "02:00 - 04:00", "shift": "Night Shift", "start_h": 2},
-        {"block": "04:00 - 06:00", "shift": "Night Shift", "start_h": 4},
-        {"block": "06:00 - 08:00", "shift": "Night Shift", "start_h": 6},
         {"block": "08:00 - 10:00", "shift": "Day Shift", "start_h": 8},
         {"block": "10:00 - 12:00", "shift": "Day Shift", "start_h": 10},
         {"block": "12:00 - 14:00", "shift": "Day Shift", "start_h": 12},
@@ -1035,11 +1077,15 @@ def get_dashboard_stats(
         {"block": "18:00 - 20:00", "shift": "Day Shift", "start_h": 18},
         {"block": "20:00 - 22:00", "shift": "Night Shift", "start_h": 20},
         {"block": "22:00 - 00:00", "shift": "Night Shift", "start_h": 22},
+        {"block": "00:00 - 02:00", "shift": "Night Shift", "start_h": 0},
+        {"block": "02:00 - 04:00", "shift": "Night Shift", "start_h": 2},
+        {"block": "04:00 - 06:00", "shift": "Night Shift", "start_h": 4},
+        {"block": "06:00 - 08:00", "shift": "Night Shift", "start_h": 6},
     ]
 
-    if shift and shift.lower() == 'day shift':
+    if shift and "day" in shift.lower() and not ("night" in shift.lower()):
         active_blocks = [b for b in all_time_blocks if b["shift"] == "Day Shift"]
-    elif shift and shift.lower() == 'night shift':
+    elif shift and "night" in shift.lower():
         active_blocks = [b for b in all_time_blocks if b["shift"] == "Night Shift"]
     else:
         active_blocks = all_time_blocks
@@ -1087,6 +1133,9 @@ def get_dashboard_stats(
             total_ng += 1
 
         t_block = a.get("time_block")
+        if t_block and ("22:00" in t_block and ("24:00" in t_block or "00:00" in t_block)):
+            t_block = "22:00 - 00:00"
+
         l_name = a.get("line_name")
         auditor = a.get("auditor") or "Unknown"
 
@@ -1232,7 +1281,7 @@ def get_dashboard_stats(
     total_slots_completed = sum(len(lm["blocks_completed"]) for lm in line_map.values())
     total_slot_completeness_pct = round(total_slots_completed / total_slots_target * 100, 1) if total_slots_target > 0 else 0.0
 
-    capas = supabase_db_query("capa", params="status=neq.CLOSED&select=id&limit=2000")
+    capas = supabase_db_query_all("capa", params="status=neq.CLOSED&select=id&order=created_at.desc")
     open_capas_count = len(capas) if isinstance(capas, list) else 0
 
     return {
@@ -1258,10 +1307,6 @@ def get_dashboard_stats(
         "auditor_performance": auditors_list,
         "ng_defects_log": ng_log[:20]
     }
-
-# ==========================================================================
-# DASHBOARD NG DRILL-DOWN: AUDIT HISTORY, FINDINGS, PHOTOS & CAPA LINK
-# ==========================================================================
 @router.get("/dashboard/ng-drilldown")
 def get_ng_drilldown(
     line_name: Optional[str] = None,
@@ -1281,8 +1326,15 @@ def get_ng_drilldown(
         if time_block and time_block != "all":
             filters.append(f"time_block=eq.{urllib.parse.quote(time_block)}")
         if date:
+            from datetime import timedelta
+            try:
+                t_dt = datetime.datetime.strptime(date, "%Y-%m-%d")
+                n_dt = t_dt + timedelta(days=1)
+                n_str = n_dt.strftime("%Y-%m-%d")
+            except:
+                n_str = date
             filters.append(f"audit_time=gte.{date}T00:00:00")
-            filters.append(f"audit_time=lte.{date}T23:59:59")
+            filters.append(f"audit_time=lte.{n_str}T23:59:59")
 
         ng_filters = list(filters) + ["overall_status=eq.NG"]
         param_str = "&".join(ng_filters) + "&select=*&order=audit_time.desc&limit=50"
@@ -2354,7 +2406,7 @@ def update_capa(capa_id: str, payload: dict, user=Depends(get_optional_user)):
 @router.get("/analytics")
 def get_analytics():
     # Fetch live CAPA records from database
-    capas = supabase_db_query("capa", params="select=id,station_code,defect_description,status&limit=2000")
+    capas = supabase_db_query_all("capa", params="select=id,station_code,defect_description,status&order=created_at.desc")
     if not isinstance(capas, list): capas = []
     
     # Map station codes to standard manufacturing Process Names
@@ -2392,7 +2444,7 @@ def get_analytics():
     ]
     
     # Query audits count
-    audits_res = supabase_db_query("audits", params="select=id,overall_status&limit=10000")
+    audits_res = supabase_db_query_all("audits", params="select=id,overall_status&order=audit_time.desc")
     if isinstance(audits_res, list) and audits_res:
         total_audits = len(audits_res)
         total_ok = sum(1 for a in audits_res if a.get("overall_status") == "OK")
@@ -2905,7 +2957,14 @@ def get_fai_audits(
     if start_date:
         params += f"&audit_time=gte.{start_date}T00:00:00"
     if end_date:
-        params += f"&audit_time=lte.{end_date}T23:59:59"
+        from datetime import timedelta
+        try:
+            e_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d")
+            en_dt = e_dt + timedelta(days=1)
+            en_str = en_dt.strftime("%Y-%m-%d")
+        except:
+            en_str = end_date
+        params += f"&audit_time=lte.{en_str}T23:59:59"
         
     db_res = supabase_db_query("fai_audits", params=params)
     if isinstance(db_res, list):

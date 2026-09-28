@@ -1083,7 +1083,7 @@ function renderOption3ShopfloorBayMatrix(allStations, container) {
     { code: 'P5', name: 'SMT Line P5', type: 'SMT', std: '5Q4-046' },
     { code: 'DIP51', name: 'DIP Line DIP51', type: 'DIP', std: '5Q4-053' },
     { code: 'DIP1', name: 'DIP Line DIP1', type: 'DIP', std: '5Q4-053' },
-    { code: 'DIP3', name: 'DIP Line DIP3', type: 'DIP', std: '5Q4-053' }
+    { code: 'DIP2', name: 'DIP Line DIP2', type: 'DIP', std: '5Q4-053' }
   ];
 
   const phase2Defs = [
@@ -1092,7 +1092,7 @@ function renderOption3ShopfloorBayMatrix(allStations, container) {
     { code: 'T5', name: 'SMT Line T5', type: 'SMT', std: '5Q4-046' },
     { code: 'P8', name: 'SMT Line P8', type: 'SMT', std: '5Q4-046' },
     { code: 'DIP52', name: 'DIP Line DIP52', type: 'DIP', std: '5Q4-053' },
-    { code: 'DIP2', name: 'DIP Line DIP2', type: 'DIP', std: '5Q4-053' }
+    { code: 'DIP3', name: 'DIP Line DIP3', type: 'DIP', std: '5Q4-053' }
   ];
 
   const buildLineObj = (def) => {
