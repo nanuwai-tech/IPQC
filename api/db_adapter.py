@@ -50,14 +50,11 @@ def _cache_invalidate(table: str):
 
 
 def get_pg_pool():
-    global _pg_pool, _last_failed_time
-    if _pg_pool is not None and not _pg_pool.closed:
-        return _pg_pool
+    # Force use of Supabase to ensure data is in sync with Vercel
+    # since Vercel writes only to Supabase and not to the VM's local DB.
+    return None
     
-    # Throttle retry attempts if connection previously failed
-    now = time.time()
-    if now - _last_failed_time < 30:
-        return None
+    global _pg_pool, _last_failed_time
 
     db_urls = [
         "postgresql://appuser:pg_pass_ab8b4b05859d46839003b565@127.0.0.1:5432/appdb"
