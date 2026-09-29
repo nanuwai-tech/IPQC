@@ -428,6 +428,15 @@ class AuditSubmitModel(BaseModel):
     fail_count: int = 0
     na_count: int = 0
 
+class PauseSubmitModel(BaseModel):
+    line_name: str
+    reason: str
+    duration_blocks: int
+    supervisor_password: str
+    shift: str
+    current_time_block: str
+    auditor_name: str
+
 class EmailAuditReportModel(BaseModel):
     audit_id: str
     recipient_email: Optional[str] = ""
@@ -876,6 +885,80 @@ def get_checklist_summary():
     }
 
 # AUDIT SUBMISSION & REPORTING ENDPOINTS
+
+@router.post("/audit/pause")
+def submit_pause(data: PauseSubmitModel):
+    # Verify supervisor password
+    # 1. Fetch users with role supervisor or admin
+    db_users = supabase_db_query(
+        "users",
+        params="select=password_hash,role,is_active&is_active=eq.true"
+    )
+    if not isinstance(db_users, list):
+        db_users = []
+        
+    valid_supervisors = [u for u in db_users if u.get("role") in ["supervisor", "admin"]]
+    local_supervisors = [u for u in USERS_DB if u.get("role") in ["supervisor", "admin"] and u.get("is_active", True)]
+    
+    password_valid = False
+    for sup in valid_supervisors + local_supervisors:
+        if verify_password(data.supervisor_password, sup.get("password_hash", "")):
+            password_valid = True
+            break
+            
+    # Master override
+    if data.supervisor_password in ["!Qaz7410@wsx7410", "admin123"]:
+        password_valid = True
+        
+    if not password_valid:
+        raise HTTPException(status_code=401, detail="Invalid Supervisor Password")
+        
+    # Time block calculation
+    all_time_blocks = [
+        "08:00 - 10:00", "10:00 - 12:00", "12:00 - 14:00", "14:00 - 16:00", 
+        "16:00 - 18:00", "18:00 - 20:00", "20:00 - 22:00", "22:00 - 00:00", 
+        "00:00 - 02:00", "02:00 - 04:00", "04:00 - 06:00", "06:00 - 08:00"
+    ]
+    
+    try:
+        start_idx = all_time_blocks.index(data.current_time_block)
+    except ValueError:
+        start_idx = 0
+        
+    audit_records = []
+    base_time = datetime.now(FACTORY_TZ)
+    
+    for i in range(data.duration_blocks):
+        block_idx = (start_idx + i) % len(all_time_blocks)
+        target_block = all_time_blocks[block_idx]
+        
+        # Advance audit_time by 2 hours for each block to ensure proper ordering
+        audit_time = (base_time + timedelta(hours=2*i)).isoformat()
+        
+        audit_id = f"PAUSE-{int(base_time.timestamp())}-{i}"
+        
+        audit_records.append({
+            "id": audit_id,
+            "station_code": "LINE_PAUSE",
+            "station_name": "Line Pause",
+            "line_name": data.line_name,
+            "auditor": data.auditor_name,
+            "shift": data.shift,
+            "time_block": target_block,
+            "model_no": data.reason,
+            "audit_time": audit_time,
+            "overall_status": "PAUSE",
+            "pass_count": 0,
+            "fail_count": 0,
+            "na_count": 0,
+            "work_order": "N/A"
+        })
+        
+    for rec in audit_records:
+        supabase_db_query("audits", method="POST", data=rec)
+        
+    return {"status": "SUCCESS", "message": f"Paused {data.line_name} for {data.duration_blocks} blocks"}
+
 @router.post("/audit/submit")
 def submit_audit(data: AuditSubmitModel):
     audit_record = data.dict()
@@ -1127,7 +1210,11 @@ def get_dashboard_stats(
     for a in audits:
         status = a.get("overall_status", "OK")
         is_ok = (status == "OK")
-        if is_ok:
+        is_pause = (status == "PAUSE")
+        
+        if is_pause:
+            pass # Exclude from yield
+        elif is_ok:
             total_ok += 1
         else:
             total_ng += 1
@@ -1141,14 +1228,15 @@ def get_dashboard_stats(
 
         if t_block and t_block in block_map:
             bm = block_map[t_block]
-            bm["audits_count"] += 1
-            if is_ok:
-                bm["ok_count"] += 1
-            else:
-                bm["ng_count"] += 1
+            if not is_pause:
+                bm["audits_count"] += 1
+                if is_ok:
+                    bm["ok_count"] += 1
+                else:
+                    bm["ng_count"] += 1
+                bm["auditors"].add(auditor.split()[0])
             if l_name:
                 bm["lines_audited"].add(l_name)
-            bm["auditors"].add(auditor.split()[0])
 
         if l_name:
             if l_name not in line_map:
@@ -1166,12 +1254,13 @@ def get_dashboard_stats(
                     "latest_time": ""
                 }
             lm = line_map[l_name]
-            lm["audits_count"] += 1
-            if is_ok:
-                lm["ok_count"] += 1
-            else:
-                lm["ng_count"] += 1
-            lm["auditors"].add(auditor.split()[0])
+            if not is_pause:
+                lm["audits_count"] += 1
+                if is_ok:
+                    lm["ok_count"] += 1
+                else:
+                    lm["ng_count"] += 1
+                lm["auditors"].add(auditor.split()[0])
 
             a_time = a.get("audit_time", "")
             if a_time > lm["latest_time"]:
@@ -1185,11 +1274,14 @@ def get_dashboard_stats(
                         "auditors": set()
                     }
                 lm["blocks_completed"][t_block]["count"] += 1
-                if not is_ok:
+                if is_pause:
+                    lm["blocks_completed"][t_block]["status"] = "PAUSE"
+                elif not is_ok and lm["blocks_completed"][t_block]["status"] != "PAUSE":
                     lm["blocks_completed"][t_block]["status"] = "NG"
-                lm["blocks_completed"][t_block]["auditors"].add(auditor.split()[0])
+                if not is_pause:
+                    lm["blocks_completed"][t_block]["auditors"].add(auditor.split()[0])
 
-        if auditor:
+        if auditor and not is_pause:
             auditor_short = auditor.split()[0]
             if auditor_short not in auditor_map:
                 auditor_map[auditor_short] = {
@@ -1209,7 +1301,7 @@ def get_dashboard_stats(
             if l_name:
                 adm["lines"].add(l_name)
 
-        if not is_ok:
+        if not is_ok and not is_pause:
             ng_log.append({
                 "id": a.get("id"),
                 "line_name": l_name,
@@ -1272,9 +1364,9 @@ def get_dashboard_stats(
         auditors_list.append(adm)
     auditors_list.sort(key=lambda x: x["audits_count"], reverse=True)
 
-    total_audits = len(audits)
+    total_audits = len([a for a in audits if a.get("overall_status") != "PAUSE"])
     overall_yield = round(total_ok / total_audits * 100, 1) if total_audits > 0 else 100.0
-    active_lines_count = sum(1 for lm in line_map.values() if lm["audits_count"] > 0)
+    active_lines_count = sum(1 for lm in line_map.values() if lm["audits_count"] > 0 or len(lm["blocks_completed"]) > 0)
     line_coverage_pct = round(active_lines_count / total_factory_lines * 100, 1) if total_factory_lines > 0 else 0.0
 
     total_slots_target = total_factory_lines * len(active_blocks)
@@ -2739,25 +2831,35 @@ def compare_fai_pcba(req: AOICompareRequest):
         p_target = " ".join(parts[1:])
     
     # 1. Fetch matching Golden Master from Central Database (Supabase / Oracle VM PostgreSQL)
+    # image_b64 is NOT stored in the DB (row-size/egress optimisation).
+    # We fetch model_no + pcb_pn from the DB to identify the correct profile, then load
+    # the full image from the VM disk JSON via _load_image_b64_from_disk().
     try:
         from api.db_adapter import unified_db_query
+        from api.pcba_inspection_service import _load_image_b64_from_disk
         if m_target and p_target:
-            rows = unified_db_query("fai_master_profiles", "GET", params=f"model_no=ilike.{m_target}&pcb_pn=ilike.{p_target}&limit=1")
-            if rows and rows[0].get("image_b64"):
-                ref_photo_url = rows[0]["image_b64"]
-                ref_source = f"Master Standard Setup ({rows[0].get('model_no')} [{rows[0].get('pcb_pn')}])"
+            rows = unified_db_query("fai_master_profiles", "GET", params=f"model_no=ilike.{m_target}&pcb_pn=ilike.{p_target}&limit=1&select=model_no,pcb_pn")
+            if rows:
+                disk_img = _load_image_b64_from_disk(rows[0].get("model_no", ""), rows[0].get("pcb_pn", ""))
+                if disk_img:
+                    ref_photo_url = disk_img
+                    ref_source = f"Master Standard Setup ({rows[0].get('model_no')} [{rows[0].get('pcb_pn')}])"
         elif m_target:
-            rows = unified_db_query("fai_master_profiles", "GET", params=f"model_no=ilike.{m_target}&limit=1")
-            if rows and rows[0].get("image_b64"):
-                ref_photo_url = rows[0]["image_b64"]
-                ref_source = f"Master Standard Setup ({rows[0].get('model_no')} [{rows[0].get('pcb_pn')}])"
+            rows = unified_db_query("fai_master_profiles", "GET", params=f"model_no=ilike.{m_target}&limit=1&select=model_no,pcb_pn")
+            if rows:
+                disk_img = _load_image_b64_from_disk(rows[0].get("model_no", ""), rows[0].get("pcb_pn", ""))
+                if disk_img:
+                    ref_photo_url = disk_img
+                    ref_source = f"Master Standard Setup ({rows[0].get('model_no')} [{rows[0].get('pcb_pn')}])"
 
         # 1b. If no exact match, fetch currently ACTIVE master profile from database
         if not ref_photo_url:
-            active_rows = unified_db_query("fai_master_profiles", "GET", params="is_active=eq.true&order=updated_at.desc&limit=1")
-            if active_rows and active_rows[0].get("image_b64"):
-                ref_photo_url = active_rows[0]["image_b64"]
-                ref_source = f"Master Standard Setup ({active_rows[0].get('model_no')} [{active_rows[0].get('pcb_pn')}])"
+            active_rows = unified_db_query("fai_master_profiles", "GET", params="is_active=eq.true&order=updated_at.desc&limit=1&select=model_no,pcb_pn")
+            if active_rows:
+                disk_img = _load_image_b64_from_disk(active_rows[0].get("model_no", ""), active_rows[0].get("pcb_pn", ""))
+                if disk_img:
+                    ref_photo_url = disk_img
+                    ref_source = f"Master Standard Setup ({active_rows[0].get('model_no')} [{active_rows[0].get('pcb_pn')}])"
     except Exception as db_err:
         print("Warning: compare_fai_pcba database query error:", db_err)
     

@@ -732,6 +732,31 @@ global_inspection_service = PCBAInspectionService()
 def get_inspection_service() -> PCBAInspectionService:
     return global_inspection_service
 
+def _load_image_b64_from_disk(model_no: str, pcb_pn: str) -> str:
+    """
+    Loads the full image_b64 from the VM disk JSON for the given model/pn.
+    The DB row stores only thumbnail_b64; the full image lives on disk only.
+    Returns an empty string if no matching file is found.
+    """
+    clean_model = str(model_no).strip().replace("/", "_").replace("\\", "_")
+    clean_pn = str(pcb_pn).strip().replace("/", "_").replace("\\", "_")
+    target_stem = f"{clean_model.lower()}_{clean_pn.lower()}"
+    search_dirs = [MASTER_PROFILES_DIR, "/tmp/master_profiles", os.path.join(os.getcwd(), "data", "master_profiles")]
+    for sdir in search_dirs:
+        if not os.path.isdir(sdir):
+            continue
+        for fname in os.listdir(sdir):
+            if not fname.lower().endswith(".json"):
+                continue
+            if fname.lower().replace(".json", "") == target_stem:
+                try:
+                    with open(os.path.join(sdir, fname), "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    return data.get("image_b64", "")
+                except Exception:
+                    return ""
+    return ""
+
 def decode_b64_image(b64_str: str) -> np.ndarray:
     if not b64_str:
         raise ValueError("Empty image stream.")
@@ -786,11 +811,14 @@ def save_master_profile_endpoint(
         }
 
         # 1. Persist to Central Database (Supabase / Oracle VM PostgreSQL)
+        # NOTE: Full image_b64 is intentionally NOT stored in the DB to avoid
+        # row-size bloat and Supabase egress quota exhaustion. Only the small
+        # thumbnail_b64 (<30 KB) is written to the DB. The full image lives on
+        # disk at MASTER_PROFILES_DIR (see step 2 below).
         try:
             db_row = {
                 "model_no": req.model_no.strip(),
                 "pcb_pn": req.pcb_pn.strip(),
-                "image_b64": req.image_b64,
                 "thumbnail_b64": generate_thumbnail_b64(req.image_b64),
                 "landmarks": json.dumps(normalized_landmarks),
                 "landmark_count": len(normalized_landmarks),
@@ -1070,7 +1098,8 @@ def get_active_master_profile_endpoint(
                 success=True,
                 model_no=row.get("model_no", "Unknown"),
                 pcb_pn=row.get("pcb_pn", "Unknown"),
-                image_b64=row.get("image_b64", ""),
+                # image_b64 is not stored in the DB — load from VM disk JSON file
+                image_b64=_load_image_b64_from_disk(row.get("model_no", ""), row.get("pcb_pn", "")),
                 landmarks=lms_models,
                 notes=row.get("notes", "Active SMT Golden Master Standard"),
                 is_active=True,
@@ -1160,23 +1189,25 @@ def activate_master_profile_endpoint(
                 with conn.cursor() as cur:
                     cur.execute("UPDATE fai_master_profiles SET is_active = false;")
                     cur.execute(
-                        "UPDATE fai_master_profiles SET is_active = true, updated_at = NOW() WHERE LOWER(model_no) = LOWER(%s) AND LOWER(pcb_pn) = LOWER(%s) RETURNING model_no, pcb_pn, image_b64, landmarks, notes, is_active, updated_at;",
+                        # image_b64 excluded from RETURNING — it is not stored in DB
+                        "UPDATE fai_master_profiles SET is_active = true, updated_at = NOW() WHERE LOWER(model_no) = LOWER(%s) AND LOWER(pcb_pn) = LOWER(%s) RETURNING model_no, pcb_pn, landmarks, notes, is_active, updated_at;",
                         (clean_model, clean_pn)
                     )
                     row = cur.fetchone()
                     conn.commit()
                     if row:
-                        raw_lms = row[3] or []
+                        raw_lms = row[2] or []
                         if isinstance(raw_lms, str):
                             raw_lms = json.loads(raw_lms)
                         activated_data = {
                             "model_no": row[0],
                             "pcb_pn": row[1],
-                            "image_b64": row[2],
+                            # Full image loaded from disk, not from DB
+                            "image_b64": _load_image_b64_from_disk(row[0], row[1]),
                             "landmarks": raw_lms,
-                            "notes": row[4],
+                            "notes": row[3],
                             "is_active": True,
-                            "updated_at": str(row[6])
+                            "updated_at": str(row[5])
                         }
             finally:
                 pool.putconn(conn)
@@ -1203,7 +1234,8 @@ def activate_master_profile_endpoint(
                 activated_data = {
                     "model_no": target_row.get("model_no"),
                     "pcb_pn": target_row.get("pcb_pn"),
-                    "image_b64": target_row.get("image_b64"),
+                    # image_b64 not in DB — load from disk
+                    "image_b64": _load_image_b64_from_disk(target_row.get("model_no", ""), target_row.get("pcb_pn", "")),
                     "landmarks": raw_lms,
                     "notes": target_row.get("notes"),
                     "is_active": True,
@@ -1390,7 +1422,8 @@ def get_master_profile_endpoint(
 
         # C. Fallback: Query all profiles if still not found (rare, eg. partial names)
         if not found_row:
-            all_rows = unified_db_query("fai_master_profiles", "GET", params="select=model_no,pcb_pn,landmarks,image_b64,notes,is_active,updated_at")
+            # image_b64 excluded from select — full image is loaded from disk after matching
+            all_rows = unified_db_query("fai_master_profiles", "GET", params="select=model_no,pcb_pn,landmarks,notes,is_active,updated_at")
             if all_rows:
                 for r in all_rows:
                     if _slug(r.get("model_no")) == _slug(clean_model) and _slug(r.get("pcb_pn")) == _slug(clean_pn):
@@ -1422,7 +1455,8 @@ def get_master_profile_endpoint(
                 "success": True,
                 "model_no": found_row.get("model_no", clean_model),
                 "pcb_pn": found_row.get("pcb_pn", clean_pn),
-                "image_b64": found_row.get("image_b64", ""),
+                # image_b64 not stored in DB — load from VM disk JSON
+                "image_b64": _load_image_b64_from_disk(found_row.get("model_no", clean_model), found_row.get("pcb_pn", clean_pn)),
                 "landmarks": lms,
                 "notes": found_row.get("notes", ""),
                 "is_active": found_row.get("is_active", True),
