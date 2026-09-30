@@ -741,6 +741,7 @@ def _load_image_b64_from_disk(model_no: str, pcb_pn: str) -> str:
     clean_model = str(model_no).strip().replace("/", "_").replace("\\", "_")
     clean_pn = str(pcb_pn).strip().replace("/", "_").replace("\\", "_")
     target_stem = f"{clean_model.lower()}_{clean_pn.lower()}"
+    target_slug = f"{_slug(clean_model)}_{_slug(clean_pn)}"
     search_dirs = [MASTER_PROFILES_DIR, "/tmp/master_profiles", os.path.join(os.getcwd(), "data", "master_profiles")]
     for sdir in search_dirs:
         if not os.path.isdir(sdir):
@@ -748,7 +749,8 @@ def _load_image_b64_from_disk(model_no: str, pcb_pn: str) -> str:
         for fname in os.listdir(sdir):
             if not fname.lower().endswith(".json"):
                 continue
-            if fname.lower().replace(".json", "") == target_stem:
+            stem = fname[:-5].lower()
+            if stem == target_stem or _slug(stem) == target_slug:
                 try:
                     with open(os.path.join(sdir, fname), "r", encoding="utf-8") as f:
                         data = json.load(f)
@@ -819,6 +821,8 @@ def save_master_profile_endpoint(
             db_row = {
                 "model_no": req.model_no.strip(),
                 "pcb_pn": req.pcb_pn.strip(),
+                # Empty string satisfies the schema NOT NULL constraint with 0 bytes overhead
+                "image_b64": "",
                 "thumbnail_b64": generate_thumbnail_b64(req.image_b64),
                 "landmarks": json.dumps(normalized_landmarks),
                 "landmark_count": len(normalized_landmarks),

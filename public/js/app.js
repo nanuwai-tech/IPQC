@@ -1,4 +1,4 @@
-// Global Application State
+﻿// Global Application State
 let currentLang = 'zh';
 let currentUser = null;
 let authToken = localStorage.getItem('ipqc_token') || null;
@@ -960,13 +960,50 @@ function renderOption1LinearFlow(allStations, container) {
         </div>
 
         <!-- Mini Line Progress Meter -->
-        <div style="min-width: 240px;">
-          <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">
-            <span>Line Compliance</span>
-            <span style="color:#34d399; font-weight:bold;">100.0% OK</span>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <div style="position: relative;">
+            <button onclick="togglePauseDropdown()" style="background: rgba(107, 114, 128, 0.2); border: 1px solid rgba(107, 114, 128, 0.5); color: #e5e7eb; padding: 0.4rem 0.8rem; border-radius: 6px; font-size: 0.75rem; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; transition: all 0.2s;">
+              <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              Audit Pause
+            </button>
+            <div id="pauseDropdown" style="display: none; position: absolute; top: 110%; right: 0; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.75rem; z-index: 100; min-width: 220px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+              <div style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.7rem; color: #9ca3af; display: block; margin-bottom: 0.2rem;">Reason for pause:</label>
+                <select id="pauseReasonSelect" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; padding: 0.3rem; font-size: 0.75rem;">
+                  <option value="No production plan">No production plan</option>
+                  <option value="Product Change">Product Change</option>
+                  <option value="Machine Down">Machine Down</option>
+                  <option value="Maintenance">Maintenance</option>
+                  <option value="Others">Others</option>
+                </select>
+              </div>
+              <div style="margin-bottom: 0.5rem;">
+                <label style="font-size: 0.7rem; color: #9ca3af; display: block; margin-bottom: 0.2rem;">Time Duration:</label>
+                <select id="pauseDurationSelect" style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; padding: 0.3rem; font-size: 0.75rem;">
+                  <option value="1">2 Hrs</option>
+                  <option value="2">4 Hrs</option>
+                  <option value="3">6 Hrs</option>
+                  <option value="4">8 Hrs</option>
+                  <option value="5">10 Hrs</option>
+                  <option value="6">Full Shift (12 Hrs)</option>
+                  <option value="12">Day (24 Hrs)</option>
+                </select>
+              </div>
+              <div style="margin-bottom: 0.75rem;">
+                <label style="font-size: 0.7rem; color: #9ca3af; display: block; margin-bottom: 0.2rem;">Supervisor Password:</label>
+                <input type="password" id="pauseSupervisorPassword" placeholder="Enter password..." style="width: 100%; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); color: #cbd5e1; border-radius: 4px; padding: 0.3rem; font-size: 0.75rem;" />
+              </div>
+              <button onclick="submitPauseForm()" style="width: 100%; background: #3b82f6; color: white; border: none; padding: 0.4rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">Confirm Pause</button>
+            </div>
           </div>
-          <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-            <div style="width:${pct}%; height:100%; background:linear-gradient(90deg, #38bdf8, #34d399); border-radius:4px; transition:width 0.3s;"></div>
+          <div style="min-width: 240px;">
+            <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--text-muted); margin-bottom:0.25rem;">
+              <span>Line Compliance</span>
+              <span style="color:#34d399; font-weight:bold;">100.0% OK</span>
+            </div>
+            <div style="width:100%; height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+              <div style="width:${pct}%; height:100%; background:linear-gradient(90deg, #38bdf8, #34d399); border-radius:4px; transition:width 0.3s;"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -4305,6 +4342,12 @@ function renderDashboardMatrix(lines, blocks, selectedType) {
               <span>✓ OK</span> <span style="font-size: 0.65rem; opacity: 0.8;">(${bInfo.count})</span>
             </div>
           `;
+        } else if (bInfo.status === 'PAUSE') {
+          cellContent = ` 
+            <div style="background: rgba(107, 114, 128, 0.25); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.6); padding: 3px 12px; border-radius: 6px; font-weight: bold; display: inline-flex; align-items: center; justify-content: center; min-width: 45px;" title="Paused. Auditor:  ">
+              <span>--</span>
+            </div>
+          `;
         } else {
           const curDate = (currentDashboardData && currentDashboardData.date) ? currentDashboardData.date : '';
           const escapedLine = (l.line_name || '').replace(/'/g, "\\'");
@@ -4802,3 +4845,58 @@ function updateDrilldownCAPABadge(capaId, status, owner, root_cause, action_take
   if (rootEl && root_cause) rootEl.textContent = root_cause;
   if (actEl && action_taken) actEl.textContent = action_taken;
 }
+
+
+window.togglePauseDropdown = function() {
+  const dd = document.getElementById('pauseDropdown');
+  if (dd) {
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+  }
+};
+
+window.submitPauseForm = async function() {
+  const reason = document.getElementById('pauseReasonSelect').value;
+  const duration = parseInt(document.getElementById('pauseDurationSelect').value, 10);
+  const pwd = document.getElementById('pauseSupervisorPassword').value;
+
+  if (!pwd) {
+    alert("Please enter a Supervisor password.");
+    return;
+  }
+
+  const dd = document.getElementById('pauseDropdown');
+  if (dd) dd.style.display = 'none';
+  
+  const activeLine = (typeof selectedLineFilter !== 'undefined' && selectedLineFilter !== 'All Lines') ? selectedLineFilter : 'SMT Line T1';
+
+  if (!confirm('Are you sure you want to pause audit for ' + activeLine + ' due to: ' + reason + '?')) return;
+
+  const payload = {
+    line_name: activeLine,
+    reason: reason,
+    duration_blocks: duration,
+    supervisor_password: pwd,
+    shift: (typeof currentShift !== 'undefined') ? currentShift : 'Day Shift',
+    current_time_block: (typeof currentSlot !== 'undefined') ? currentSlot : '08:00 - 10:00',
+    auditor_name: (typeof currentUser !== 'undefined' && currentUser && currentUser.fullname) ? currentUser.fullname : 'Admin'
+  };
+
+  try {
+    const res = await apiFetch('/api/audit/pause', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      alert('Line ' + activeLine + ' paused successfully.');
+      if (typeof window.refreshDashboard === 'function') window.refreshDashboard();
+      else location.reload();
+    } else {
+      const err = await res.json();
+      alert('Failed to pause line: ' + (err.detail || 'Unknown error'));
+    }
+  } catch(e) {
+    console.error(e);
+    alert('Error pausing line.');
+  }
+};
