@@ -1928,9 +1928,13 @@ function renderMasterDatabaseGrid(profiles) {
       ? `<span style="background:rgba(5,150,105,0.25);color:#34d399;border:1px solid #059669;padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:bold;">★ CURRENT ACTIVE STANDARD</span>`
       : `<span style="background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid #334155;padding:2px 7px;border-radius:4px;font-size:0.68rem;">Registered Standard</span>`;
     
+    // Safely encode to prevent single quotes or special characters from corrupting inline JS
+    const encM = encodeURIComponent(cleanModel).replace(/'/g, '%27');
+    const encP = encodeURIComponent(cleanPn).replace(/'/g, '%27');
+
     const activateBtn = isThisActive
       ? `<button type="button" class="btn-select" disabled style="background:rgba(5,150,105,0.2);color:#34d399;border-color:#059669;font-size:0.75rem;padding:0.35rem 0.6rem;cursor:default;">✓ Active Standard</button>`
-      : `<button type="button" class="btn-primary" onclick="selectAndActivateMaster('${cleanModel}', '${cleanPn}')" style="background:#059669;color:#fff;font-size:0.75rem;padding:0.35rem 0.65rem;display:flex;align-items:center;gap:4px;font-weight:600;" title="Set as active reference for AOI inspection">⭐ Activate for Inspection</button>`;
+      : `<button type="button" class="btn-primary" onclick="selectAndActivateMaster(decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="background:#059669;color:#fff;font-size:0.75rem;padding:0.35rem 0.65rem;display:flex;align-items:center;gap:4px;font-weight:600;cursor:pointer;" title="Set as active reference for AOI inspection">⭐ Activate for Inspection</button>`;
     
     return `<div style="background:#0b0f19;${cardBorder}border-radius:10px;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;transition:border-color 0.2s;" onmouseover="if (!${isThisActive}) this.style.borderColor='#38bdf8'" onmouseout="if (!${isThisActive}) this.style.borderColor='#1e293b'">
       <div>
@@ -1945,7 +1949,7 @@ function renderMasterDatabaseGrid(profiles) {
 
         <!-- Thumbnail Image -->
         <div style="width:100%;height:140px;background:#000;border-radius:6px;overflow:hidden;margin-bottom:0.75rem;border:1px solid #334155;display:flex;align-items:center;justify-content:center;position:relative;">
-          <img src="${thumb}" onerror="handleMasterThumbError(this, '${cleanModel}', '${cleanPn}')" style="width:100%;height:100%;object-fit:cover;display:block;" alt="${cleanModel}">
+          <img src="${thumb}" onerror="handleMasterThumbError(this, decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="width:100%;height:100%;object-fit:cover;display:block;" alt="${cleanModel}">
           <span style="position:absolute;bottom:6px;left:6px;background:rgba(15,23,42,0.85);color:#38bdf8;font-size:0.68rem;padding:2px 6px;border-radius:4px;border:1px solid rgba(56,189,248,0.3);font-weight:bold;">
             🎯 ${lmCount} Landmarks
           </span>
@@ -1965,11 +1969,11 @@ function renderMasterDatabaseGrid(profiles) {
       <div style="display:flex;gap:0.5rem;justify-content:space-between;align-items:center;border-top:1px solid #1e293b;padding-top:0.75rem;flex-wrap:wrap;">
         <div style="display:flex;gap:0.4rem;align-items:center;">
           ${activateBtn}
-          <button type="button" class="btn-select" onclick="openMasterSetupModalFor('${cleanModel}', '${cleanPn}')" style="padding:0.35rem 0.55rem;font-size:0.75rem;display:flex;align-items:center;gap:3px;color:#38bdf8;" title="Calibrate landmarks">
+          <button type="button" class="btn-select" onclick="openMasterSetupModalFor(decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="padding:0.35rem 0.55rem;font-size:0.75rem;display:flex;align-items:center;gap:3px;color:#38bdf8;cursor:pointer;" title="Calibrate landmarks">
             <span>🛠️ Edit</span>
           </button>
         </div>
-        <button type="button" class="btn-select" onclick="deleteMasterProfile('${cleanModel}', '${cleanPn}')" style="padding:0.35rem 0.55rem;font-size:0.75rem;color:#ef4444;border-color:rgba(239,68,68,0.4);" title="Delete master profile">
+        <button type="button" class="btn-select" onclick="deleteMasterProfile(decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="padding:0.35rem 0.55rem;font-size:0.75rem;color:#ef4444;border-color:rgba(239,68,68,0.4);cursor:pointer;" title="Delete master profile">
           <span>🗑️</span>
         </button>
       </div>
@@ -1997,6 +2001,14 @@ function handleMasterThumbError(imgEl, model, pn) {
 async function selectAndActivateMaster(modelNo, pcbPn) {
   showToast('Activating Master', `Setting ${modelNo} [${pcbPn}] as active standard...`, 'info');
   await setActiveMasterForInspection(modelNo, pcbPn);
+  if (Array.isArray(cachedMasterProfiles)) {
+    const slug = (s) => (s || '').toString().toLowerCase().replace(/[\s\-_/.]+/g, '');
+    const targetKey = `${slug(modelNo)}_${slug(pcbPn)}`;
+    cachedMasterProfiles.forEach(p => {
+      p.is_active = (`${slug(p.model_no)}_${slug(p.pcb_pn)}` === targetKey);
+    });
+    renderMasterDatabaseGrid(cachedMasterProfiles);
+  }
   closeMasterDatabaseModal();
   if (typeof switchFaiStep === 'function') {
     switchFaiStep(3);
@@ -2062,6 +2074,7 @@ async function deleteMasterProfile(modelNo, pcbPn) {
 }
 
 function registerNewMasterBoard() {
+  closeMasterDatabaseModal();
   const modal = document.getElementById('modal-master-setup');
   if (!modal) return;
   
@@ -2085,6 +2098,7 @@ function registerNewMasterBoard() {
 }
 
 function openMasterSetupModalFor(modelNo, pcbPn) {
+  closeMasterDatabaseModal();
   const modal = document.getElementById('modal-master-setup');
   if (!modal) return;
   
@@ -2272,8 +2286,9 @@ function applyMasterProfileToSetupUI(data, statusMsg = '✓ Master Standard Load
   
   const masterImg = document.getElementById('setup-master-img');
   const canvas = document.getElementById('setup-master-canvas');
-  if (masterImg && data.image_b64) {
-    masterImg.src = data.image_b64;
+  const displaySrc = data.image_b64 || data.thumbnail_b64;
+  if (masterImg && displaySrc) {
+    masterImg.src = displaySrc;
   }
   
   const renderMasterCanvas = () => {
@@ -2370,7 +2385,11 @@ async function loadMasterProfileForSetup() {
   }
 
   // 5. Apply or Clear
-  if (data && data.image_b64) {
+  const hasContent = data && (data.image_b64 || data.thumbnail_b64 || (Array.isArray(data.landmarks) && data.landmarks.length > 0));
+  if (hasContent) {
+    if (!data.image_b64 && data.thumbnail_b64) {
+      data.image_b64 = data.thumbnail_b64;
+    }
     applyMasterProfileToSetupUI(data, '✓ Master Standard Synced', 'success');
     try {
       await MasterImageDB.set(modelNo, pcbPn, data);
@@ -4138,3 +4157,18 @@ function emDeleteLandmark(idx) {
   renderEditModeCanvas();
   renderEditModeLandmarkList();
 }
+
+// Global window exposure for SMT Golden Master Database modal actions
+window.openMasterDatabaseModal = openMasterDatabaseModal;
+window.closeMasterDatabaseModal = closeMasterDatabaseModal;
+window.loadMasterDatabaseList = loadMasterDatabaseList;
+window.renderMasterDatabaseGrid = renderMasterDatabaseGrid;
+window.filterMasterDatabaseList = filterMasterDatabaseList;
+window.selectAndActivateMaster = selectAndActivateMaster;
+window.openMasterSetupModalFor = openMasterSetupModalFor;
+window.deleteMasterProfile = deleteMasterProfile;
+window.handleMasterThumbError = handleMasterThumbError;
+window.registerNewMasterBoard = registerNewMasterBoard;
+window.loadMasterProfileForSetup = loadMasterProfileForSetup;
+window.closeMasterSetupModal = closeMasterSetupModal;
+

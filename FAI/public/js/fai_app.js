@@ -4943,9 +4943,13 @@ function renderMasterDatabaseGrid(profiles) {
       ? `<span style="background:rgba(5,150,105,0.25);color:#34d399;border:1px solid #059669;padding:2px 8px;border-radius:4px;font-size:0.68rem;font-weight:bold;">★ CURRENT ACTIVE STANDARD</span>`
       : `<span style="background:rgba(148,163,184,0.1);color:#94a3b8;border:1px solid #334155;padding:2px 7px;border-radius:4px;font-size:0.68rem;">Registered Standard</span>`;
     
+    // Safely encode to prevent single quotes or special characters from corrupting inline JS
+    const encM = encodeURIComponent(cleanModel).replace(/'/g, '%27');
+    const encP = encodeURIComponent(cleanPn).replace(/'/g, '%27');
+
     const activateBtn = isThisActive
       ? `<button type="button" class="btn-select" disabled style="background:rgba(5,150,105,0.2);color:#34d399;border-color:#059669;font-size:0.75rem;padding:0.35rem 0.6rem;cursor:default;">✓ Active Standard</button>`
-      : `<button type="button" class="btn-primary" onclick="selectAndActivateMaster('${cleanModel}', '${cleanPn}')" style="background:#059669;color:#fff;font-size:0.75rem;padding:0.35rem 0.65rem;display:flex;align-items:center;gap:4px;font-weight:600;" title="Set as active reference for AOI inspection">⭐ Activate for Inspection</button>`;
+      : `<button type="button" class="btn-primary" onclick="selectAndActivateMaster(decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="background:#059669;color:#fff;font-size:0.75rem;padding:0.35rem 0.65rem;display:flex;align-items:center;gap:4px;font-weight:600;cursor:pointer;" title="Set as active reference for AOI inspection">⭐ Activate for Inspection</button>`;
     
     return `<div style="background:#0b0f19;${cardBorder}border-radius:10px;padding:1rem;display:flex;flex-direction:column;justify-content:space-between;transition:border-color 0.2s;" onmouseover="if (!${isThisActive}) this.style.borderColor='#38bdf8'" onmouseout="if (!${isThisActive}) this.style.borderColor='#1e293b'">
       <div>
@@ -4980,11 +4984,11 @@ function renderMasterDatabaseGrid(profiles) {
       <div style="display:flex;gap:0.5rem;justify-content:space-between;align-items:center;border-top:1px solid #1e293b;padding-top:0.75rem;flex-wrap:wrap;">
         <div style="display:flex;gap:0.4rem;align-items:center;">
           ${activateBtn}
-          <button type="button" class="btn-select" onclick="openMasterSetupModalFor('${cleanModel}', '${cleanPn}')" style="padding:0.35rem 0.55rem;font-size:0.75rem;display:flex;align-items:center;gap:3px;color:#38bdf8;" title="Calibrate landmarks">
+          <button type="button" class="btn-select" onclick="openMasterSetupModalFor(decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="padding:0.35rem 0.55rem;font-size:0.75rem;display:flex;align-items:center;gap:3px;color:#38bdf8;cursor:pointer;" title="Calibrate landmarks">
             <span>🛠️ Edit</span>
           </button>
         </div>
-        <button type="button" class="btn-select" onclick="deleteMasterProfile('${cleanModel}', '${cleanPn}')" style="padding:0.35rem 0.55rem;font-size:0.75rem;color:#ef4444;border-color:rgba(239,68,68,0.4);" title="Delete master profile">
+        <button type="button" class="btn-select" onclick="deleteMasterProfile(decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="padding:0.35rem 0.55rem;font-size:0.75rem;color:#ef4444;border-color:rgba(239,68,68,0.4);cursor:pointer;" title="Delete master profile">
           <span>🗑️</span>
         </button>
       </div>

@@ -1102,8 +1102,8 @@ def get_active_master_profile_endpoint(
                 success=True,
                 model_no=row.get("model_no", "Unknown"),
                 pcb_pn=row.get("pcb_pn", "Unknown"),
-                # image_b64 is not stored in the DB — load from VM disk JSON file
-                image_b64=_load_image_b64_from_disk(row.get("model_no", ""), row.get("pcb_pn", "")),
+                # image_b64 is not stored in the DB — load from VM disk JSON file, with thumbnail_b64 fallback
+                image_b64=_load_image_b64_from_disk(row.get("model_no", ""), row.get("pcb_pn", "")) or row.get("thumbnail_b64", ""),
                 landmarks=lms_models,
                 notes=row.get("notes", "Active SMT Golden Master Standard"),
                 is_active=True,
@@ -1220,6 +1220,7 @@ def activate_master_profile_endpoint(
         try:
             target_rows = unified_db_query("fai_master_profiles", "GET", params=f"model_no=ilike.{clean_model}&pcb_pn=ilike.{clean_pn}&limit=1")
             if target_rows and not activated_data:
+                target_row = target_rows[0]
                 unified_db_query("fai_master_profiles", "PATCH", params=f"model_no=ilike.{clean_model}&pcb_pn=ilike.{clean_pn}", data={"is_active": True, "updated_at": datetime.now().isoformat()})
                 # Safely deactivate other active profiles without table-wide neq scan
                 try:
@@ -1459,8 +1460,8 @@ def get_master_profile_endpoint(
                 "success": True,
                 "model_no": found_row.get("model_no", clean_model),
                 "pcb_pn": found_row.get("pcb_pn", clean_pn),
-                # image_b64 not stored in DB — load from VM disk JSON
-                "image_b64": _load_image_b64_from_disk(found_row.get("model_no", clean_model), found_row.get("pcb_pn", clean_pn)),
+                # image_b64 not stored in DB — load from VM disk JSON, with thumbnail_b64 fallback
+                "image_b64": _load_image_b64_from_disk(found_row.get("model_no", clean_model), found_row.get("pcb_pn", clean_pn)) or found_row.get("thumbnail_b64", ""),
                 "landmarks": lms,
                 "notes": found_row.get("notes", ""),
                 "is_active": found_row.get("is_active", True),
