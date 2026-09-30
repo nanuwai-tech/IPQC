@@ -43,7 +43,10 @@ if not os.path.exists(MASTER_PROFILES_DIR):
     MASTER_PROFILES_DIR = os.path.join(BASE_DIR, "data", "master_profiles")
 if not os.path.exists(MASTER_PROFILES_DIR):
     MASTER_PROFILES_DIR = "data/master_profiles"
-os.makedirs(MASTER_PROFILES_DIR, exist_ok=True)
+try:
+    os.makedirs(MASTER_PROFILES_DIR, exist_ok=True)
+except OSError:
+    pass
 
 # ── Zero-delay In-Memory & Normalization Cache for Golden Master Profiles ─────
 _MASTER_CACHE: Dict[str, dict] = {}
@@ -140,6 +143,7 @@ class MasterProfileResponse(BaseModel):
     message: str
     notes: Optional[str] = ""
     is_active: Optional[bool] = True
+    thumbnail_b64: Optional[str] = ""
 
 class LandmarkInspectRequest(BaseModel):
     golden_image_b64: str
@@ -742,10 +746,28 @@ def _load_image_b64_from_disk(model_no: str, pcb_pn: str) -> str:
     clean_pn = str(pcb_pn).strip().replace("/", "_").replace("\\", "_")
     target_stem = f"{clean_model.lower()}_{clean_pn.lower()}"
     target_slug = f"{_slug(clean_model)}_{_slug(clean_pn)}"
-    search_dirs = [MASTER_PROFILES_DIR, "/tmp/master_profiles", os.path.join(os.getcwd(), "data", "master_profiles")]
+    search_dirs = [
+        os.path.join(BASE_DIR, "data", "master_profiles"),
+        MASTER_PROFILES_DIR,
+        os.path.join(PROJECT_ROOT, "data", "master_profiles"),
+        os.path.join(os.getcwd(), "data", "master_profiles"),
+        "/tmp/master_profiles"
+    ]
     for sdir in search_dirs:
         if not os.path.isdir(sdir):
             continue
+        # Direct check by filename
+        for candidate_name in [f"{clean_model}_{clean_pn}.json", f"{target_slug}.json"]:
+            cpath = os.path.join(sdir, candidate_name)
+            if os.path.exists(cpath):
+                try:
+                    with open(cpath, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    img = data.get("image_b64", "") or data.get("thumbnail_b64", "")
+                    if img:
+                        return img
+                except Exception:
+                    pass
         for fname in os.listdir(sdir):
             if not fname.lower().endswith(".json"):
                 continue
@@ -754,9 +776,11 @@ def _load_image_b64_from_disk(model_no: str, pcb_pn: str) -> str:
                 try:
                     with open(os.path.join(sdir, fname), "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    return data.get("image_b64", "")
+                    img = data.get("image_b64", "") or data.get("thumbnail_b64", "")
+                    if img:
+                        return img
                 except Exception:
-                    return ""
+                    continue
     return ""
 
 def decode_b64_image(b64_str: str) -> np.ndarray:
@@ -1098,12 +1122,14 @@ def get_active_master_profile_endpoint(
                     pin1_pos=lm.get("pin1_pos")
                 ))
 
+            img_found = _load_image_b64_from_disk(row.get("model_no", ""), row.get("pcb_pn", "")) or row.get("thumbnail_b64", "") or row.get("image_b64", "")
             return MasterProfileResponse(
                 success=True,
                 model_no=row.get("model_no", "Unknown"),
                 pcb_pn=row.get("pcb_pn", "Unknown"),
                 # image_b64 is not stored in the DB — load from VM disk JSON file, with thumbnail_b64 fallback
-                image_b64=_load_image_b64_from_disk(row.get("model_no", ""), row.get("pcb_pn", "")) or row.get("thumbnail_b64", ""),
+                image_b64=img_found,
+                thumbnail_b64=row.get("thumbnail_b64", "") or (generate_thumbnail_b64(img_found) if img_found else ""),
                 landmarks=lms_models,
                 notes=row.get("notes", "Active SMT Golden Master Standard"),
                 is_active=True,
@@ -1194,24 +1220,26 @@ def activate_master_profile_endpoint(
                     cur.execute("UPDATE fai_master_profiles SET is_active = false;")
                     cur.execute(
                         # image_b64 excluded from RETURNING — it is not stored in DB
-                        "UPDATE fai_master_profiles SET is_active = true, updated_at = NOW() WHERE LOWER(model_no) = LOWER(%s) AND LOWER(pcb_pn) = LOWER(%s) RETURNING model_no, pcb_pn, landmarks, notes, is_active, updated_at;",
+                        "UPDATE fai_master_profiles SET is_active = true, updated_at = NOW() WHERE LOWER(model_no) = LOWER(%s) AND LOWER(pcb_pn) = LOWER(%s) RETURNING model_no, pcb_pn, thumbnail_b64, landmarks, notes, is_active, updated_at;",
                         (clean_model, clean_pn)
                     )
                     row = cur.fetchone()
                     conn.commit()
                     if row:
-                        raw_lms = row[2] or []
+                        raw_lms = row[3] or []
                         if isinstance(raw_lms, str):
                             raw_lms = json.loads(raw_lms)
+                        img_found = _load_image_b64_from_disk(row[0], row[1]) or (row[2] or "")
                         activated_data = {
                             "model_no": row[0],
                             "pcb_pn": row[1],
                             # Full image loaded from disk, not from DB
-                            "image_b64": _load_image_b64_from_disk(row[0], row[1]),
+                            "image_b64": img_found,
+                            "thumbnail_b64": row[2] or "",
                             "landmarks": raw_lms,
-                            "notes": row[3],
+                            "notes": row[4],
                             "is_active": True,
-                            "updated_at": str(row[5])
+                            "updated_at": str(row[6])
                         }
             finally:
                 pool.putconn(conn)
@@ -1236,11 +1264,13 @@ def activate_master_profile_endpoint(
                 raw_lms = target_row.get("landmarks") or []
                 if isinstance(raw_lms, str):
                     raw_lms = json.loads(raw_lms)
+                img_found = _load_image_b64_from_disk(target_row.get("model_no", ""), target_row.get("pcb_pn", "")) or target_row.get("thumbnail_b64", "") or target_row.get("image_b64", "")
                 activated_data = {
                     "model_no": target_row.get("model_no"),
                     "pcb_pn": target_row.get("pcb_pn"),
                     # image_b64 not in DB — load from disk
-                    "image_b64": _load_image_b64_from_disk(target_row.get("model_no", ""), target_row.get("pcb_pn", "")),
+                    "image_b64": img_found,
+                    "thumbnail_b64": target_row.get("thumbnail_b64", ""),
                     "landmarks": raw_lms,
                     "notes": target_row.get("notes"),
                     "is_active": True,
@@ -1252,7 +1282,7 @@ def activate_master_profile_endpoint(
         print("Warning: Database activate error:", db_err)
 
     # 2. Update filesystem backups
-    search_dirs = [MASTER_PROFILES_DIR, "/tmp/master_profiles", os.path.join(os.getcwd(), "data", "master_profiles")]
+    search_dirs = [os.path.join(BASE_DIR, "data", "master_profiles"), MASTER_PROFILES_DIR, "/tmp/master_profiles", os.path.join(os.getcwd(), "data", "master_profiles")]
     for sdir in search_dirs:
         if not os.path.exists(sdir):
             continue
@@ -1291,11 +1321,13 @@ def activate_master_profile_endpoint(
                 confidence=lm.get("confidence", 1.0),
                 pin1_pos=lm.get("pin1_pos")
             ))
+        img_resp = activated_data.get("image_b64", "") or activated_data.get("thumbnail_b64", "")
         return MasterProfileResponse(
             success=True,
             model_no=activated_data.get("model_no", model_no),
             pcb_pn=activated_data.get("pcb_pn", pcb_pn),
-            image_b64=activated_data.get("image_b64", ""),
+            image_b64=img_resp,
+            thumbnail_b64=activated_data.get("thumbnail_b64", "") or (generate_thumbnail_b64(img_resp) if img_resp else ""),
             landmarks=lms_models,
             notes=activated_data.get("notes", ""),
             is_active=True,
@@ -1325,23 +1357,33 @@ def get_master_profile_endpoint(
 
     # 2. Check local filesystem cache
     search_dirs = [
+        os.path.join(BASE_DIR, "data", "master_profiles"),
         MASTER_PROFILES_DIR,
         os.path.join(PROJECT_ROOT, "data", "master_profiles"),
         os.path.join(os.getcwd(), "data", "master_profiles"),
         "/tmp/master_profiles"
     ]
     filepath = None
+    target_stem = f"{clean_model.lower()}_{clean_pn.lower()}"
     for sdir in search_dirs:
         if not os.path.exists(sdir):
             continue
-        # Direct check by slug
+        # Direct check by slug or clean stem
         candidate_file = os.path.join(sdir, f"{slug_key}.json")
+        candidate_stem = os.path.join(sdir, f"{clean_model}_{clean_pn}.json")
         if os.path.exists(candidate_file):
             filepath = candidate_file
+            break
+        if os.path.exists(candidate_stem):
+            filepath = candidate_stem
             break
         # Search all json files matching model and pn slug
         for fname in os.listdir(sdir):
             if fname.lower().endswith(".json"):
+                stem = fname[:-5].lower()
+                if stem == target_stem or _slug(stem) == slug_key:
+                    filepath = os.path.join(sdir, fname)
+                    break
                 p = os.path.join(sdir, fname)
                 try:
                     with open(p, "r", encoding="utf-8") as pf:
@@ -1372,11 +1414,13 @@ def get_master_profile_endpoint(
                     confidence=lm.get("confidence", 1.0),
                     pin1_pos=lm.get("pin1_pos")
                 ))
+            img_b64 = data.get("image_b64", "") or data.get("thumbnail_b64", "")
             resp_dict = {
                 "success": True,
                 "model_no": data.get("model_no", clean_model),
                 "pcb_pn": data.get("pcb_pn", clean_pn),
-                "image_b64": data.get("image_b64", ""),
+                "image_b64": img_b64,
+                "thumbnail_b64": data.get("thumbnail_b64", "") or (generate_thumbnail_b64(img_b64) if img_b64 else ""),
                 "landmarks": lms,
                 "notes": data.get("notes", ""),
                 "is_active": data.get("is_active", True),
@@ -1428,7 +1472,7 @@ def get_master_profile_endpoint(
         # C. Fallback: Query all profiles if still not found (rare, eg. partial names)
         if not found_row:
             # image_b64 excluded from select — full image is loaded from disk after matching
-            all_rows = unified_db_query("fai_master_profiles", "GET", params="select=model_no,pcb_pn,landmarks,notes,is_active,updated_at")
+            all_rows = unified_db_query("fai_master_profiles", "GET", params="select=model_no,pcb_pn,thumbnail_b64,landmarks,notes,is_active,updated_at")
             if all_rows:
                 for r in all_rows:
                     if _slug(r.get("model_no")) == _slug(clean_model) and _slug(r.get("pcb_pn")) == _slug(clean_pn):
@@ -1456,12 +1500,14 @@ def get_master_profile_endpoint(
                     pin1_pos=lm.get("pin1_pos")
                 ))
             
+            found_img = _load_image_b64_from_disk(found_row.get("model_no", clean_model), found_row.get("pcb_pn", clean_pn)) or found_row.get("thumbnail_b64", "") or found_row.get("image_b64", "")
             resp_dict = {
                 "success": True,
                 "model_no": found_row.get("model_no", clean_model),
                 "pcb_pn": found_row.get("pcb_pn", clean_pn),
                 # image_b64 not stored in DB — load from VM disk JSON, with thumbnail_b64 fallback
-                "image_b64": _load_image_b64_from_disk(found_row.get("model_no", clean_model), found_row.get("pcb_pn", clean_pn)) or found_row.get("thumbnail_b64", ""),
+                "image_b64": found_img,
+                "thumbnail_b64": found_row.get("thumbnail_b64", "") or (generate_thumbnail_b64(found_img) if found_img else ""),
                 "landmarks": lms,
                 "notes": found_row.get("notes", ""),
                 "is_active": found_row.get("is_active", True),

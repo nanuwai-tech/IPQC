@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "api/data/master_profiles/**"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",

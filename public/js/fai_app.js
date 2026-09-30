@@ -2335,7 +2335,7 @@ async function loadMasterProfileForSetup() {
   // 1. Check client IndexedDB cache first: renders in <5ms with 0 network egress
   try {
     const cached = await MasterImageDB.get(modelNo, pcbPn);
-    if (cached && cached.image_b64) {
+    if (cached && (cached.image_b64 || cached.thumbnail_b64)) {
       applyMasterProfileToSetupUI(cached, '⚡ Instant Cached Master (0ms)', 'success');
       return;
     }
@@ -2344,10 +2344,11 @@ async function loadMasterProfileForSetup() {
   }
 
   // 2. Progressive preview: check in-memory cachedMasterProfiles for thumbnail
+  let inMem = null;
   if (Array.isArray(cachedMasterProfiles)) {
-    const inMem = cachedMasterProfiles.find(p => `${slug(p.model_no)}_${slug(p.pcb_pn)}` === reqSlug);
+    inMem = cachedMasterProfiles.find(p => `${slug(p.model_no)}_${slug(p.pcb_pn)}` === reqSlug);
     if (inMem && (inMem.thumbnail_b64 || inMem.image_b64)) {
-      const previewImg = inMem.thumbnail_b64 || inMem.image_b64;
+      const previewImg = inMem.image_b64 || inMem.thumbnail_b64;
       const masterImg = document.getElementById('setup-master-img');
       if (masterImg) masterImg.src = previewImg;
       if (Array.isArray(inMem.landmarks) && inMem.landmarks.length > 0) {
@@ -2369,8 +2370,10 @@ async function loadMasterProfileForSetup() {
     if (res.ok) {
       data = await res.json();
     } else if (res.status === 404) {
-      clearSetupMasterUI(modelNo, pcbPn);
-      return;
+      if (!inMem) {
+        clearSetupMasterUI(modelNo, pcbPn);
+        return;
+      }
     }
   } catch (err) {
     console.warn('API load master profile error:', err);
@@ -2385,14 +2388,23 @@ async function loadMasterProfileForSetup() {
   }
 
   // 5. Apply or Clear
-  const hasContent = data && (data.image_b64 || data.thumbnail_b64 || (Array.isArray(data.landmarks) && data.landmarks.length > 0));
-  if (hasContent) {
-    if (!data.image_b64 && data.thumbnail_b64) {
-      data.image_b64 = data.thumbnail_b64;
-    }
-    applyMasterProfileToSetupUI(data, '✓ Master Standard Synced', 'success');
+  const imgUrl = data?.image_b64 || data?.thumbnail_b64 || inMem?.image_b64 || inMem?.thumbnail_b64;
+  const isFound = Boolean(data && data.success) || Boolean(inMem) || Boolean(imgUrl);
+
+  if (isFound && imgUrl) {
+    const profileToApply = {
+      model_no: data?.model_no || inMem?.model_no || modelNo,
+      pcb_pn: data?.pcb_pn || inMem?.pcb_pn || pcbPn,
+      image_b64: imgUrl,
+      thumbnail_b64: data?.thumbnail_b64 || inMem?.thumbnail_b64 || '',
+      landmarks: data?.landmarks || inMem?.landmarks || [],
+      notes: data?.notes || inMem?.notes || '',
+      is_active: data?.is_active ?? inMem?.is_active ?? false,
+      updated_at: data?.updated_at || inMem?.updated_at || ''
+    };
+    applyMasterProfileToSetupUI(profileToApply, '✓ Master Standard Synced', 'success');
     try {
-      await MasterImageDB.set(modelNo, pcbPn, data);
+      await MasterImageDB.set(modelNo, pcbPn, profileToApply);
     } catch (e) {}
   } else {
     clearSetupMasterUI(modelNo, pcbPn);

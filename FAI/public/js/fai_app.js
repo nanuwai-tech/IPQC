@@ -5207,8 +5207,9 @@ async function loadMasterProfileForSetup() {
       currentMasterLandmarks = data.landmarks || [];
       
       const masterImg = document.getElementById('setup-master-img');
-      if (masterImg && data.image_b64) {
-        masterImg.src = data.image_b64;
+      const imgUrl = data.image_b64 || data.thumbnail_b64;
+      if (masterImg && imgUrl) {
+        masterImg.src = imgUrl;
       }
       
       const renderMasterCanvas = () => {

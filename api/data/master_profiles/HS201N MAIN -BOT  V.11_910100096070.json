@@ -1,0 +1,79 @@
+{
+  "model_no": "HS201N MAIN -BOT  V.11",
+  "pcb_pn": "910100096070",
+  "image_b64": "data:image/svg+xml;utf8,<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"600\" height=\"350\" viewBox=\"0 0 600 350\"><rect width=\"100%\" height=\"100%\" fill=\"%230b0f19\"/><text x=\"50%\" y=\"45%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%2338bdf8\" font-family=\"sans-serif\" font-size=\"16\" font-weight=\"bold\">No Golden Master Registered</text><text x=\"50%\" y=\"58%\" dominant-baseline=\"middle\" text-anchor=\"middle\" fill=\"%2364748b\" font-family=\"sans-serif\" font-size=\"13\">Upload photo or capture from camera to calibrate this board</text></svg>",
+  "landmarks": [
+    {
+      "id": "FID_1",
+      "name": "FID_1",
+      "type": "FIDUCIAL",
+      "center": [
+        65.0,
+        65.0
+      ],
+      "box": {
+        "x": 50.0,
+        "y": 50.0,
+        "width": 30.0,
+        "height": 30.0
+      },
+      "master_box": {
+        "x": 50.0,
+        "y": 50.0,
+        "width": 30.0,
+        "height": 30.0
+      },
+      "confidence": 1.0,
+      "pin1_pos": null
+    },
+    {
+      "id": "U1",
+      "name": "U1",
+      "type": "IC_CHIP",
+      "center": [
+        230.0,
+        180.0
+      ],
+      "box": {
+        "x": 200.0,
+        "y": 150.0,
+        "width": 60.0,
+        "height": 60.0
+      },
+      "master_box": {
+        "x": 200.0,
+        "y": 150.0,
+        "width": 60.0,
+        "height": 60.0
+      },
+      "confidence": 1.0,
+      "pin1_pos": null
+    },
+    {
+      "id": "J1",
+      "name": "J1",
+      "type": "CONNECTOR",
+      "center": [
+        160.0,
+        320.0
+      ],
+      "box": {
+        "x": 100.0,
+        "y": 300.0,
+        "width": 120.0,
+        "height": 40.0
+      },
+      "master_box": {
+        "x": 100.0,
+        "y": 300.0,
+        "width": 120.0,
+        "height": 40.0
+      },
+      "confidence": 1.0,
+      "pin1_pos": null
+    }
+  ],
+  "notes": "Approved SMT Golden Master Reference",
+  "is_active": false,
+  "updated_at": "2026-09-25T06:02:44.665208+00:00"
+}
