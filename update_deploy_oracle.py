@@ -3,13 +3,15 @@ import os, subprocess, sys
 sys.stdout.reconfigure(encoding='utf-8')
 res = subprocess.run(['git', 'ls-files', '-m'], capture_output=True, text=True)
 files_to_update = [f for f in res.stdout.split('\n') if f and f != 'deploy_oracle.py' and f != 'update_deploy_oracle.py']
+for extra in ['api/r2_storage.py', 'test_r2_kv.py', 'setup_supabase_db.py']:
+    if os.path.exists(extra) and extra not in files_to_update:
+        files_to_update.append(extra)
 
-with open('deploy_oracle.py', 'w', encoding='utf-8') as f:
-    f.write('''import tarfile
+template = '''import tarfile
 import subprocess
 import os
 
-files_to_update = {0}
+files_to_update = FILES_PLACEHOLDER
 tar_path = 'dist_update_fai.tar.gz'
 
 print(f"Creating {tar_path}...")
@@ -49,5 +51,11 @@ if ssh_res.stderr:
     print("SSH STDERR:\\n" + ssh_res.stderr)
 
 print("Oracle VM Deployment Complete!")
-'''.format(repr(files_to_update)))
-print('deploy_oracle.py updated.')
+'''
+
+with open('deploy_oracle.py', 'w', encoding='utf-8') as f:
+    f.write(template.replace('FILES_PLACEHOLDER', repr(files_to_update)))
+
+print('deploy_oracle.py generated. Executing deployment to Oracle VM...')
+deploy_res = subprocess.run([sys.executable, 'deploy_oracle.py'])
+sys.exit(deploy_res.returncode)

@@ -124,7 +124,26 @@ CREATE TABLE IF NOT EXISTS public.capa (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     due_date DATE
 );
-""")
+
+-- Cloudflare R2 Object Storage Keys (Zero DB payload bloat)
+ALTER TABLE public.audit_details ADD COLUMN IF NOT EXISTS r2_key TEXT;
+ALTER TABLE public.capa ADD COLUMN IF NOT EXISTS r2_key TEXT;
+
+CREATE TABLE IF NOT EXISTS public.fai_master_profiles (
+    id SERIAL PRIMARY KEY,
+    model_no TEXT NOT NULL,
+    pcb_pn TEXT NOT NULL,
+    image_b64 TEXT DEFAULT '',
+    r2_key TEXT,
+    thumbnail_b64 TEXT,
+    landmarks JSONB,
+    landmark_count INTEGER DEFAULT 0,
+    notes TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE public.fai_master_profiles ADD COLUMN IF NOT EXISTS r2_key TEXT;
+""");
 
 # Enable RLS & Add Public Access Policies
 print("Configuring Row Level Security (RLS) & Policies...")

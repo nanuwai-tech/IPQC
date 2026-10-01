@@ -33,6 +33,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Tuple, Optional, Dict, Any
 from api.db_adapter import unified_db_query
+from api.r2_storage import purge_master_profile_cache
 
 ULTRALYTICS_INSTALLED = True
 
@@ -114,8 +115,9 @@ class DetectLandmarksResponse(BaseModel):
 class SaveMasterProfileRequest(BaseModel):
     model_no: str
     pcb_pn: str
-    image_b64: str
-    landmarks: List[PCBALandmark]
+    image_b64: Optional[str] = ""
+    r2_key: Optional[str] = None
+    landmarks: List[PCBALandmark] = []
     notes: Optional[str] = "Approved SMT Golden Master Reference"
     is_active: Optional[bool] = True
 
@@ -126,6 +128,7 @@ class MasterProfileSummary(BaseModel):
     notes: Optional[str] = ""
     updated_at: str
     thumbnail_b64: Optional[str] = None
+    r2_key: Optional[str] = None
     is_active: bool = True
 
 class MasterProfilesListResponse(BaseModel):
@@ -138,6 +141,7 @@ class MasterProfileResponse(BaseModel):
     model_no: str
     pcb_pn: str
     image_b64: str
+    r2_key: Optional[str] = None
     landmarks: List[PCBALandmark]
     updated_at: str
     message: str
@@ -829,25 +833,36 @@ def save_master_profile_endpoint(
         profile_data = {
             "model_no": req.model_no.strip(),
             "pcb_pn": req.pcb_pn.strip(),
-            "image_b64": req.image_b64,
+            "image_b64": req.image_b64 or "",
+            "r2_key": req.r2_key or "",
             "landmarks": normalized_landmarks,
             "notes": req.notes or "Approved SMT Golden Master Reference",
             "is_active": req.is_active if req.is_active is not None else True,
             "updated_at": datetime.now().isoformat()
         }
 
+        # Evict local in-memory cache
+        slug_key = f"{_slug(req.model_no)}_{_slug(req.pcb_pn)}"
+        _MASTER_CACHE.pop(slug_key, None)
+
+        # Purge Cloudflare KV Edge Cache to prevent stale cache
+        try:
+            purge_master_profile_cache(req.model_no, req.pcb_pn, req.r2_key)
+        except Exception as kv_err:
+            print("[KV Purge Warning]", kv_err)
+
         # 1. Persist to Central Database (Supabase / Oracle VM PostgreSQL)
         # NOTE: Full image_b64 is intentionally NOT stored in the DB to avoid
-        # row-size bloat and Supabase egress quota exhaustion. Only the small
-        # thumbnail_b64 (<30 KB) is written to the DB. The full image lives on
-        # disk at MASTER_PROFILES_DIR (see step 2 below).
+        # row-size bloat and Supabase egress quota exhaustion. Only r2_key and thumbnail_b64
+        # (<30 KB) are written to the DB.
         try:
             db_row = {
                 "model_no": req.model_no.strip(),
                 "pcb_pn": req.pcb_pn.strip(),
-                # Empty string satisfies the schema NOT NULL constraint with 0 bytes overhead
+                # Empty string satisfies legacy schema NOT NULL constraint
                 "image_b64": "",
-                "thumbnail_b64": generate_thumbnail_b64(req.image_b64),
+                "r2_key": req.r2_key or "",
+                "thumbnail_b64": generate_thumbnail_b64(req.image_b64) if req.image_b64 else "",
                 "landmarks": json.dumps(normalized_landmarks),
                 "landmark_count": len(normalized_landmarks),
                 "notes": req.notes or "Approved SMT Golden Master Reference",
@@ -908,13 +923,15 @@ def save_master_profile_endpoint(
             success=True,
             model_no=req.model_no,
             pcb_pn=req.pcb_pn,
-            image_b64=req.image_b64,
+            image_b64=req.image_b64 or "",
+            r2_key=req.r2_key or "",
             landmarks=[PCBALandmark(**lm) for lm in normalized_landmarks],
             notes=profile_data["notes"],
             is_active=profile_data["is_active"],
             updated_at=profile_data["updated_at"],
             message=f"Golden Master profile saved successfully for Model: {req.model_no}, P/N: {req.pcb_pn} with {len(normalized_landmarks)} landmarks."
         )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save master profile: {str(e)}")
 
@@ -1078,6 +1095,15 @@ def delete_master_profile_endpoint(
                         deleted = True
                     except OSError:
                         pass
+
+        # Evict in-memory and KV cache
+        slug_key = f"{_slug(model_no)}_{_slug(pcb_pn)}"
+        _MASTER_CACHE.pop(slug_key, None)
+        try:
+            purge_master_profile_cache(model_no, pcb_pn)
+        except Exception:
+            pass
+
         return {"success": True, "message": f"Master profile {model_no} [{pcb_pn}] deleted successfully."}
     except HTTPException:
         raise

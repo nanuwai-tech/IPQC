@@ -23,6 +23,77 @@ if (typeof showToast === 'undefined') {
 // 5Q4-045 SMT FIRST & LAST ARTICLE (FAI/LAI) CONTROLLER
 // ==============================================================================
 
+/**
+ * Returns current date and time formatted in Thailand Factory Timezone (UTC+7 / Asia/Bangkok).
+ */
+function getThailandNow() {
+  const now = new Date();
+  // Format accurately using Intl in 'Asia/Bangkok'
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(now);
+  const map = {};
+  parts.forEach(p => { map[p.type] = p.value; });
+  
+  const y = map.year;
+  const m = map.month;
+  const d = map.day;
+  const hh = map.hour;
+  const mm = map.minute;
+  const ss = map.second;
+  
+  return {
+    dateStr: `${y}-${m}-${d}`,
+    timeStr: `${hh}:${mm}`,
+    dateTimeStr: `${y}-${m}-${d} ${hh}:${mm}:${ss}`,
+    isoStr: `${y}-${m}-${d}T${hh}:${mm}:${ss}+07:00`,
+    compactDate: `${y}${m}${d}`,
+    hours: parseInt(hh, 10)
+  };
+}
+
+/**
+ * Normalizes any timestamp string (UTC, ISO, or stored naive time) into Thailand Time (UTC+7).
+ */
+function formatThailandDateTime(dtStr) {
+  if (!dtStr) return '-';
+  try {
+    let str = String(dtStr).trim();
+    // If it's already "YYYY-MM-DD HH:mm:ss" without timezone offset, check if ISO
+    if (!str.includes('T') && !str.includes('Z') && !str.includes('+')) {
+      // Standard local timestamp
+      return str.slice(0, 19);
+    }
+    const d = new Date(str);
+    if (isNaN(d.getTime())) return str.slice(0, 19).replace('T', ' ');
+    
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(d);
+    const map = {};
+    parts.forEach(p => { map[p.type] = p.value; });
+    return `${map.year}-${map.month}-${map.day} ${map.hour}:${map.minute}:${map.second}`;
+  } catch (e) {
+    return String(dtStr).slice(0, 19).replace('T', ' ');
+  }
+}
+
 let currentFaiStep = 1;
 let cachedFaiRecords = [];
 let faiCompPhotos = {}; // { seq: base64DataUrl }
@@ -60,6 +131,53 @@ function processImageFile(file, maxDimension, quality, callback) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+}
+
+// Direct Cloudflare R2 Upload via signed PUT URL (bypasses DB entirely)
+async function uploadFileToR2(blobOrFile, filename = 'image.jpg', folder = 'master_profiles') {
+  try {
+    const contentType = blobOrFile.type || 'image/jpeg';
+    const presignRes = await fetch('/api/storage/presigned-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        filename: filename,
+        content_type: contentType,
+        folder: folder
+      })
+    });
+    
+    if (!presignRes.ok) {
+      throw new Error(`Failed to obtain signed upload URL: ${presignRes.statusText}`);
+    }
+    
+    const presignData = await presignRes.json();
+    if (!presignData.upload_url) {
+      throw new Error('No upload URL returned from storage service');
+    }
+    
+    // Direct Binary PUT to Cloudflare R2
+    const uploadRes = await fetch(presignData.upload_url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': contentType
+      },
+      body: blobOrFile
+    });
+    
+    return {
+      success: true,
+      r2_key: presignData.r2_key,
+      public_url: presignData.public_url
+    };
+  } catch (err) {
+    console.warn('[R2 Upload Warning] Fallback to inline handling:', err);
+    return {
+      success: false,
+      error: err.message,
+      r2_key: null
+    };
+  }
 }
 
 // Lightbox preview for photos
@@ -105,11 +223,10 @@ function openFaiWizard(type = 'FIRST_ARTICLE') {
     auditorInp.value = usrName;
   }
 
-  // Pre-fill time
-  const now = new Date();
-  const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+  // Pre-fill time in Thailand Time (UTC+7)
+  const thNow = getThailandNow();
   const timeInp = document.getElementById('fai-inp-fa-time');
-  if (timeInp && !timeInp.value) timeInp.value = timeStr;
+  if (timeInp && !timeInp.value) timeInp.value = thNow.timeStr;
 
   // Build 16 Critical Components Rows
   renderFaiCriticalComponentsRows();
@@ -282,7 +399,7 @@ function renderFaiCompPhotoPreview(seq) {
   if (photo) {
     container.innerHTML = `
       <div style="display:inline-flex;align-items:center;gap:0.3rem;">
-        <img src="${photo}" onclick="enlargeImage(faiCompPhotos[${seq}], 'Critical Part #${seq} Location Photo')" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1.5px solid var(--accent-cyan);cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.3);" title="Click to enlarge photo">
+        <img src="${photo}" loading="lazy" decoding="async" onclick="enlargeImage(faiCompPhotos[${seq}], 'Critical Part #${seq} Location Photo')" style="width:34px;height:34px;object-fit:cover;border-radius:4px;border:1.5px solid var(--accent-cyan);cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.3);" title="Click to enlarge photo">
         <button type="button" onclick="removeFaiCompPhoto(${seq})" class="btn-select" style="padding:0.15rem 0.35rem;font-size:0.7rem;color:#ef4444;line-height:1;" title="Remove photo">✕</button>
       </div>
     `;
@@ -455,7 +572,7 @@ function renderFaiNgPhotoPreview(itemNo) {
   if (photo) {
     container.innerHTML = `
       <div style="display:flex;align-items:center;gap:0.35rem;">
-        <img src="${photo}" onclick="enlargeImage(faiNgPhotos[${itemNo}], 'Checkpoint #${itemNo} Defect Photo')" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1.5px solid #ef4444;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.3);" title="Click to enlarge defect photo">
+        <img src="${photo}" loading="lazy" decoding="async" onclick="enlargeImage(faiNgPhotos[${itemNo}], 'Checkpoint #${itemNo} Defect Photo')" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1.5px solid #ef4444;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.3);" title="Click to enlarge defect photo">
         <label class="btn-select" style="padding:0.2rem 0.4rem;font-size:0.7rem;color:#facc15;cursor:pointer;display:inline-block;margin:0;" title="Change Photo">
           <input type="file" id="fai-ng-file-${itemNo}" accept="image/*" capture="environment" style="display:none;" onchange="handleFaiNgPhotoUpload(${itemNo}, event)">
           🔄
@@ -572,7 +689,8 @@ async function submitFaiWizard() {
   }
 
   try {
-    const auditId = 'FAI-' + new Date().toISOString().slice(0,10).replace(/-/g,'') + '-' + Math.floor(1000 + Math.random() * 9000);
+    const thNow = getThailandNow();
+    const auditId = 'FAI-' + thNow.compactDate + '-' + Math.floor(1000 + Math.random() * 9000);
     
     // Step 1
     const auditType = document.getElementById('fai-inp-type')?.value || 'FIRST_ARTICLE';
@@ -663,7 +781,7 @@ async function submitFaiWizard() {
       model_no: modelNo,
       customer: customer,
       shift: shift,
-      audit_time: new Date().toISOString().replace('T', ' ').slice(0, 19),
+      audit_time: thNow.dateTimeStr,
       green_hf: greenHf,
       pcba_photo_url: pcbaPhoto,
       sample_qty: sampleQty,
@@ -725,11 +843,19 @@ function initFaiDateRange() {
   const fromInp = document.getElementById('fai-filter-date-from');
   const toInp = document.getElementById('fai-filter-date-to');
   if (fromInp && toInp && (!fromInp.value || !toInp.value)) {
-    const today = new Date();
-    const past7 = new Date();
-    past7.setDate(today.getDate() - 6);
-    toInp.value = today.toISOString().split('T')[0];
-    fromInp.value = past7.toISOString().split('T')[0];
+    const thNow = getThailandNow();
+    toInp.value = thNow.dateStr;
+    
+    // Past 6 days in Thailand calendar
+    const d = new Date();
+    d.setDate(d.getDate() - 6);
+    const thPast = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Bangkok',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    }).format(d);
+    fromInp.value = thPast;
   }
 }
 
@@ -785,11 +911,17 @@ function onFaiDateRangeChange(source) {
 function resetFaiDateRange() {
   const fromInp = document.getElementById('fai-filter-date-from');
   const toInp = document.getElementById('fai-filter-date-to');
-  const today = new Date();
-  const past7 = new Date();
-  past7.setDate(today.getDate() - 6);
-  if (toInp) toInp.value = today.toISOString().split('T')[0];
-  if (fromInp) fromInp.value = past7.toISOString().split('T')[0];
+  const thNow = getThailandNow();
+  if (toInp) toInp.value = thNow.dateStr;
+  const d = new Date();
+  d.setDate(d.getDate() - 6);
+  const thPast = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(d);
+  if (fromInp) fromInp.value = thPast;
   loadFaiHistory();
 }
 
@@ -885,7 +1017,7 @@ function renderFaiHistoryTableRows(records) {
           <div style="font-weight:bold;color:#38bdf8;">${r.model_no || '-'}</div>
           <div style="font-size:0.75rem;color:var(--text-muted);">WO: ${r.work_order || '-'}</div>
         </td>
-        <td style="padding:0.75rem;font-size:0.8rem;color:#94a3b8;">${r.audit_time || '-'}</td>
+        <td style="padding:0.75rem;font-size:0.8rem;color:#94a3b8;">${formatThailandDateTime(r.audit_time)}</td>
         <td style="padding:0.75rem;font-size:0.8rem;">
           <div><span style="color:var(--text-muted);">Insp:</span> <b>${r.auditor || '-'}</b></div>
           <div><span style="color:var(--text-muted);">Verif:</span> <b>${r.verifier || '-'}</b></div>
@@ -1949,7 +2081,7 @@ function renderMasterDatabaseGrid(profiles) {
 
         <!-- Thumbnail Image -->
         <div style="width:100%;height:140px;background:#000;border-radius:6px;overflow:hidden;margin-bottom:0.75rem;border:1px solid #334155;display:flex;align-items:center;justify-content:center;position:relative;">
-          <img src="${thumb}" onerror="handleMasterThumbError(this, decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="width:100%;height:100%;object-fit:cover;display:block;" alt="${cleanModel}">
+          <img src="${thumb}" loading="lazy" decoding="async" onerror="handleMasterThumbError(this, decodeURIComponent('${encM}'), decodeURIComponent('${encP}'))" style="width:100%;height:100%;object-fit:cover;display:block;" alt="${cleanModel}">
           <span style="position:absolute;bottom:6px;left:6px;background:rgba(15,23,42,0.85);color:#38bdf8;font-size:0.68rem;padding:2px 6px;border-radius:4px;border:1px solid rgba(56,189,248,0.3);font-weight:bold;">
             🎯 ${lmCount} Landmarks
           </span>
@@ -2736,6 +2868,20 @@ async function saveMasterProfileFromSetup() {
       showToast('Master Profile Active', `Golden Master for ${modelNo} [${pcbPn}] saved and activated!`, 'success');
     };
 
+    // Upload master image directly to Cloudflare R2
+    let r2Key = null;
+    try {
+      const fetchResp = await fetch(b64);
+      const imgBlob = await fetchResp.blob();
+      const r2Res = await uploadFileToR2(imgBlob, `${modelNo}_${pcbPn}.jpg`, 'master_profiles');
+      if (r2Res && r2Res.success) {
+        r2Key = r2Res.r2_key;
+        profileData.r2_key = r2Key;
+      }
+    } catch (r2Err) {
+      console.warn('R2 direct upload attempt failed:', r2Err);
+    }
+
     try {
       const saveRes = await fetch('/api/pcba-vision/master-profile/save', {
         method: 'POST',
@@ -2744,6 +2890,7 @@ async function saveMasterProfileFromSetup() {
           model_no: modelNo,
           pcb_pn: pcbPn,
           image_b64: b64,
+          r2_key: r2Key,
           landmarks: formattedLandmarks,
           notes: "Approved SMT Golden Master Reference",
           is_active: true

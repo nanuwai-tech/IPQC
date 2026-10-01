@@ -21,7 +21,7 @@ from typing import List, Optional, Any, Dict
 from datetime import datetime, timezone, timedelta
 from fastapi import FastAPI, HTTPException, Header, Depends, APIRouter
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
 import io
 import xlrd
 import xlutils.copy
@@ -29,6 +29,12 @@ import xlwt
 import openpyxl
 from openpyxl.drawing.image import Image as OpenpyxlImage
 from api.pcba_inspection_service import router as pcba_vision_router
+from api.r2_storage import (
+    generate_presigned_upload_url,
+    purge_cloudflare_kv_cache,
+    purge_master_profile_cache,
+    resolve_image_url
+)
 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -262,6 +268,7 @@ class FAIAuditSubmitModel(BaseModel):
 
 class FAIAuditUpdateModel(BaseModel):
     audit_type: Optional[str] = None
+    audit_time: Optional[str] = None
     process_type: Optional[str] = None
     line_name: Optional[str] = None
     work_order: Optional[str] = None
@@ -536,6 +543,60 @@ def health_check():
         "mode": "oracle_primary",
         "timestamp": datetime.now(FACTORY_TZ).isoformat()
     }
+
+# ==============================================================================
+# CLOUDFLARE R2 OBJECT STORAGE & KV PURGE ENDPOINTS
+# ==============================================================================
+class StoragePresignedUrlRequest(BaseModel):
+    filename: str
+    content_type: Optional[str] = "image/jpeg"
+    folder: Optional[str] = "uploads"
+    expires_in: Optional[int] = 3600
+
+class StoragePurgeKVRequest(BaseModel):
+    keys: Optional[List[str]] = []
+    model_no: Optional[str] = None
+    pcb_pn: Optional[str] = None
+    r2_key: Optional[str] = None
+
+@router.post("/storage/presigned-url")
+@router.post("/storage/upload-url")
+def get_storage_presigned_url(req: StoragePresignedUrlRequest):
+    """
+    Generates an S3-compatible pre-signed PUT URL for client-direct uploads to Cloudflare R2.
+    Client uploads raw binary directly to R2, eliminating DB payload bloat.
+    """
+    res = generate_presigned_upload_url(
+        filename=req.filename,
+        content_type=req.content_type or "image/jpeg",
+        folder=req.folder or "uploads",
+        expires_in=req.expires_in or 3600
+    )
+    return res
+
+@router.post("/storage/purge-kv")
+def purge_kv_cache_endpoint(req: StoragePurgeKVRequest):
+    """
+    Purges Cloudflare KV edge cache for specified keys or master profile standard.
+    """
+    if req.model_no and req.pcb_pn:
+        return purge_master_profile_cache(req.model_no, req.pcb_pn, req.r2_key)
+    if req.keys:
+        return purge_cloudflare_kv_cache(req.keys)
+    return {"success": False, "message": "Specify keys or model_no/pcb_pn to purge"}
+
+@router.get("/storage/file/{file_path:path}")
+@app.get("/storage/file/{file_path:path}")
+def get_storage_file_redirect(file_path: str):
+    """
+    Resolves an r2_key or image path to its Cloudflare Worker / R2 URL.
+    Returns HTTP 302 redirect directly to edge (0 bytes Supabase egress).
+    """
+    url = resolve_image_url(file_path)
+    if url and url.startswith("http"):
+        return RedirectResponse(url=url, status_code=302)
+    raise HTTPException(status_code=404, detail="Storage asset not found")
+
 
 # AUTH ENDPOINTS
 @router.post("/auth/register")
@@ -2945,7 +3006,16 @@ def compare_fai_pcba(req: AOICompareRequest):
 def submit_fai_audit(data: FAIAuditSubmitModel):
     audit_record = data.dict()
     if not audit_record.get("audit_time"):
-        audit_record["audit_time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        audit_record["audit_time"] = datetime.now(FACTORY_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        # If client passed an ISO or UTC string, ensure normalized to Thailand factory time
+        try:
+            raw_t = audit_record["audit_time"]
+            if "T" in raw_t or "Z" in raw_t or "+" in raw_t:
+                parsed_dt = datetime.fromisoformat(raw_t.replace("Z", "+00:00"))
+                audit_record["audit_time"] = parsed_dt.astimezone(FACTORY_TZ).strftime("%Y-%m-%d %H:%M:%S")
+        except Exception:
+            pass
         
     # Check for NG items
     new_capas = []
@@ -3334,7 +3404,7 @@ def preview_fai_report(audit_id: str):
         <div><b>Model Code:</b> {fai.get('model_no')}</div>
         <div><b>Customer:</b> {fai.get('customer') or 'N/A'}</div>
         <div><b>Shift:</b> {fai.get('shift')}</div>
-        <div><b>Date/Time:</b> {fai.get('audit_time')}</div>
+        <div><b>Date/Time:</b> {format_local_time_str(fai.get('audit_time'), '%Y-%m-%d %H:%M:%S')}</div>
         <div><b>Process Mode:</b> {fai.get('process_type')}</div>
         <div><b>Lot Qty / Sample:</b> {fai.get('lot_qty')} / {fai.get('sample_qty')} PCS</div>
         <div><b>PCB P/N:</b> {fai.get('pcb_pn') or 'N/A'}</div>

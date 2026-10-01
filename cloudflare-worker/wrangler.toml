@@ -1,0 +1,22 @@
+name = "ipqc-image-resizer"
+main = "src/index.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+account_id = "9a4faab9359b6122497329dd3e66c27c"
+
+# Cloudflare R2 Bucket Binding (Production)
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "small-tooth-cf61"
+preview_bucket_name = "small-tooth-cf61"
+
+# Cloudflare KV Edge Cache Binding (<10ms read latency)
+[[kv_namespaces]]
+binding = "IMAGE_KV"
+id = "IPQC_IMAGE_CACHE"
+
+[vars]
+PUBLIC_DOMAIN = "https://9a4faab9359b6122497329dd3e66c27c.r2.cloudflarestorage.com"
+MAX_IMAGE_DIM = 2048
+DEFAULT_THUMB_DIM = 360
+DEFAULT_QUALITY = 75

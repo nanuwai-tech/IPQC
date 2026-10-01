@@ -2,20 +2,7 @@ import tarfile
 import subprocess
 import os
 
-files_to_update = [
-    'FAI/api/fai_api.py',
-    'FAI/public/js/checklist_data.js',
-    'FAI/public/js/fai_app.js',
-    'FAI/public/sw.js',
-    'api/db_adapter.py',
-    'api/index.py',
-    'api/stations_master.json',
-    'public/index.html',
-    'public/js/app.js',
-    'public/js/checklist_data.js',
-    'public/sw.js',
-    'stations_master.json'
-]
+files_to_update = ['api/db_adapter.py', 'api/index.py', 'api/pcba_inspection_service.py', 'api/requirements.txt', 'deploy_vercel.bat', 'public/js/fai_app.js', 'requirements.txt', 'setup_supabase_db.py', 'api/r2_storage.py', 'test_r2_kv.py']
 tar_path = 'dist_update_fai.tar.gz'
 
 print(f"Creating {tar_path}...")
@@ -50,8 +37,8 @@ ssh_res = subprocess.run(
     text=True,
     timeout=35
 )
-print("SSH STDOUT:\\n" + ssh_res.stdout)
+print("SSH STDOUT:\n" + ssh_res.stdout)
 if ssh_res.stderr:
-    print("SSH STDERR:\\n" + ssh_res.stderr)
+    print("SSH STDERR:\n" + ssh_res.stderr)
 
 print("Oracle VM Deployment Complete!")

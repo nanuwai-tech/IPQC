@@ -1,0 +1,16 @@
+{
+  "name": "ipqc-image-resizer-worker",
+  "version": "1.0.0",
+  "description": "Cloudflare Worker for edge image resizing with sharp-wasm32, R2 storage, and KV cache",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@img/sharp-wasm32": "^0.33.5"
+  },
+  "devDependencies": {
+    "wrangler": "^3.78.0"
+  }
+}

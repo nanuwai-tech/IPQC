@@ -50,11 +50,13 @@ def _cache_invalidate(table: str):
 
 
 def get_pg_pool():
-    # Force use of Supabase to ensure data is in sync with Vercel
-    # since Vercel writes only to Supabase and not to the VM's local DB.
-    return None
-    
     global _pg_pool, _last_failed_time
+    if _pg_pool is not None:
+        return _pg_pool
+
+    now = time.time()
+    if (now - _last_failed_time) < 15:
+        return None
 
     db_urls = [
         "postgresql://appuser:pg_pass_ab8b4b05859d46839003b565@127.0.0.1:5432/appdb"
@@ -69,7 +71,7 @@ def get_pg_pool():
         if not url:
             continue
         try:
-            pool = SimpleConnectionPool(1, 10, url, connect_timeout=1)
+            pool = SimpleConnectionPool(1, 20, url, connect_timeout=2)
             conn = pool.getconn()
             cur = conn.cursor()
             cur.execute("SELECT 1")
@@ -274,12 +276,26 @@ def _async_sync_to_supabase(endpoint: str, method: str, data: dict, params: str)
     """Background worker to mirror writes from Oracle Primary DB to Supabase Secondary DB asynchronously."""
     def _worker():
         try:
-            supabase_rest_fallback(endpoint, method, data, params)
+            # Supabase audit_details and capa store the r2_key directly inside photo_url;
+            # strip redundant 'r2_key' key to conform to Supabase PostgREST schema cache
+            sync_data = data
+            if isinstance(data, dict) and endpoint in ("audit_details", "capa", "audits"):
+                sync_data = {k: v for k, v in data.items() if k != "r2_key"}
+            supabase_rest_fallback(endpoint, method, sync_data, params)
         except Exception as e:
             print(f"[Supabase Backup Sync] {method} {endpoint} warning: {e}")
     threading.Thread(target=_worker, daemon=True).start()
 
 def unified_db_query(endpoint: str, method: str = "GET", data: dict = None, params: str = ""):
+    # ── Photo Sanitizer: Offload inline base64 images to Cloudflare R2 ────────
+    if method.upper() in ("POST", "PATCH") and isinstance(data, dict):
+        try:
+            from api.r2_storage import sanitize_record_photos
+            data = sanitize_record_photos(data, folder="uploads")
+        except Exception:
+            pass
+    # ──────────────────────────────────────────────────────────────────────────
+
     # ── TTL cache: serve static tables from memory on unfiltered GETs ──────
     _cacheable = (
         method.upper() == "GET"
@@ -307,6 +323,7 @@ def unified_db_query(endpoint: str, method: str = "GET", data: dict = None, para
                     conn.commit()
                     cur.close()
                     pool.putconn(conn)
+                    conn = None
                     res = []
                     for r in rows:
                         row_dict = {}
@@ -326,6 +343,7 @@ def unified_db_query(endpoint: str, method: str = "GET", data: dict = None, para
                     conn.commit()
                     cur.close()
                     pool.putconn(conn)
+                    conn = None
                     # Writes invalidate the cache so next GET re-fetches fresh data
                     if endpoint in _STATIC_CACHEABLE_TABLES:
                         _cache_invalidate(endpoint)
