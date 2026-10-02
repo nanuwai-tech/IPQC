@@ -6986,17 +6986,22 @@ async function loadAIInsights(forceManual = false) {
       custom_endpoint: aiConfigCache.endpoint || ''
     };
 
-    const res = await fetch('/api/ai/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let res;
+    if (forceManual) {
+      res = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await fetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}&provider=${encodeURIComponent(aiConfigCache.provider)}`);
+    }
 
-    if (res.ok) {
+    if (res && res.ok) {
       data = await res.json();
     } else {
-      const getRes = await fetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}&provider=${encodeURIComponent(aiConfigCache.provider)}`);
-      if (getRes.ok) data = await getRes.json();
+      const getRes = await fetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}`);
+      if (getRes && getRes.ok) data = await getRes.json();
     }
   } catch (err) {
     console.warn("AI Insights load error:", err);

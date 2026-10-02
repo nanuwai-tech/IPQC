@@ -2914,12 +2914,25 @@ function renderQrStickers() {
 // AI-POWERED INTELLIGENT TREND WARNING & PFMEA-LINKED ANALYSIS ENGINE
 // ==============================================================================
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 let aiConfigCache = {
   provider: localStorage.getItem('ipqc_ai_provider') || 'auto',
   gemini_key: localStorage.getItem('ipqc_ai_gemini_key') || '',
   endpoint: localStorage.getItem('ipqc_ai_endpoint') || 'http://192.9.135.138:8000/v1',
   model: localStorage.getItem('ipqc_ai_model') || ''
 };
+
+window.currentAIPredictions = [];
+window.currentAIPFMEAMatrix = [];
 
 async function loadAIInsights(forceManual = false) {
   const container = document.getElementById('container-ai-insights');
@@ -2949,17 +2962,22 @@ async function loadAIInsights(forceManual = false) {
       custom_endpoint: aiConfigCache.endpoint || ''
     };
 
-    const res = await apiFetch('/api/ai/analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let res;
+    if (forceManual) {
+      res = await apiFetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    } else {
+      res = await apiFetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}&provider=${encodeURIComponent(aiConfigCache.provider)}`);
+    }
 
-    if (res.ok) {
+    if (res && res.ok) {
       data = await res.json();
     } else {
-      const getRes = await apiFetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}&provider=${encodeURIComponent(aiConfigCache.provider)}`);
-      if (getRes.ok) data = await getRes.json();
+      const getRes = await apiFetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}`);
+      if (getRes && getRes.ok) data = await getRes.json();
     }
   } catch (err) {
     console.warn("AI Insights load error:", err);
@@ -2967,161 +2985,169 @@ async function loadAIInsights(forceManual = false) {
     if (runBtn) runBtn.disabled = false;
   }
 
-  // 1. Update AI Engine Status Bar
-  if (data && data.ai_engine) {
-    if (statusDot) statusDot.textContent = '🟢';
-    if (statusText) statusText.textContent = `${data.ai_engine}`;
-    if (statusBadge) {
-      statusBadge.style.background = 'rgba(52,211,153,0.15)';
-      statusBadge.style.borderColor = 'rgba(52,211,153,0.3)';
-      statusBadge.style.color = '#34d399';
-    }
-    if (latencyBadge && data.ai_latency_ms !== undefined) {
-      latencyBadge.textContent = `${data.ai_latency_ms}ms`;
-      latencyBadge.style.display = 'inline-block';
-    }
-    const engineTag = document.getElementById('ai-synthesis-engine-tag');
-    if (engineTag) engineTag.textContent = data.ai_status || data.ai_engine;
-  } else {
-    if (statusDot) statusDot.textContent = '🟡';
-    if (statusText) statusText.textContent = 'PFMEA Expert Engine (Ready)';
-    if (statusBadge) {
-      statusBadge.style.background = 'rgba(245,158,11,0.15)';
-      statusBadge.style.borderColor = 'rgba(245,158,11,0.3)';
-      statusBadge.style.color = '#f59e0b';
-    }
-  }
-
-  if (!data || !data.kpis) {
-    if (container) {
-      container.innerHTML = `
-        <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 2rem 1.5rem; text-align: center;">
-          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⚠️</div>
-          <div style="font-size: 1.05rem; font-weight: bold; color: #f87171; margin-bottom: 0.35rem;">Could not load AI Insights</div>
-          <p style="font-size: 0.85rem; color: #94a3b8; max-width: 480px; margin: 0 auto;">Please verify network connection or configure the AI API link above.</p>
-        </div>`;
-    }
-    return;
-  }
-
-  // 2. Update KPI Ribbon
-  const kpis = data.kpis;
-  const elComp = document.getElementById('ai-kpi-compliance');
-  const elTotal = document.getElementById('ai-kpi-total-audits');
-  const elAnom = document.getElementById('ai-kpi-anomalies');
-  const elRpn = document.getElementById('ai-kpi-max-rpn');
-
-  if (elComp) {
-    elComp.textContent = `${kpis.overall_compliance || 100}%`;
-    elComp.style.color = (kpis.overall_compliance >= 95) ? '#34d399' : (kpis.overall_compliance >= 90 ? '#f59e0b' : '#ef4444');
-  }
-  if (elTotal) elTotal.textContent = (kpis.total_audits || 0).toLocaleString();
-  if (elAnom) {
-    const totalAnom = (kpis.critical_count || 0) + (kpis.moderate_count || 0);
-    elAnom.textContent = `${totalAnom} Stations`;
-    elAnom.style.color = totalAnom > 0 ? (kpis.critical_count > 0 ? '#ef4444' : '#f59e0b') : '#34d399';
-  }
-  if (elRpn) {
-    elRpn.textContent = kpis.max_rpn || 18;
-    elRpn.style.color = (kpis.max_rpn >= 120) ? '#ef4444' : (kpis.max_rpn >= 60 ? '#f59e0b' : '#34d399');
-  }
-
-  // 3. Render AI Synthesis Card
-  if (synthBody) {
-    const rawMarkdown = data.trend_synthesis || '';
-    synthBody.innerHTML = formatAISynthesisMarkdown(rawMarkdown);
-  }
-
-  // 4. Render Active Anomaly Warning Cards
-  if (container) {
-    const preds = data.predictions || [];
-    if (preds.length === 0) {
-      container.innerHTML = `
-        <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(52,211,153,0.3); border-radius: 12px; padding: 2rem 1.5rem; text-align: center;">
-          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🟢</div>
-          <div style="font-size: 1.05rem; font-weight: bold; color: #34d399; margin-bottom: 0.35rem;">AI 全线制程质量稳定 (All Lines Operating in Statistical Quality Control)</div>
-          <p style="font-size: 0.82rem; color: #94a3b8; max-width: 520px; margin: 0 auto; line-height: 1.5;">
-            当前所选时间段内未检测到连续失效或异常漂移。所有 16 条生产线均符合 IATF 16949 / IPC-A-610 巡检基准。
-          </p>
-        </div>`;
+  try {
+    // 1. Update AI Engine Status Bar
+    if (data && data.ai_engine) {
+      if (statusDot) statusDot.textContent = '🟢';
+      if (statusText) statusText.textContent = `${data.ai_engine}`;
+      if (statusBadge) {
+        statusBadge.style.background = 'rgba(52,211,153,0.15)';
+        statusBadge.style.borderColor = 'rgba(52,211,153,0.3)';
+        statusBadge.style.color = '#34d399';
+      }
+      if (latencyBadge && data.ai_latency_ms !== undefined) {
+        latencyBadge.textContent = `${data.ai_latency_ms}ms`;
+        latencyBadge.style.display = 'inline-block';
+      }
+      const engineTag = document.getElementById('ai-synthesis-engine-tag');
+      if (engineTag) engineTag.textContent = data.ai_status || data.ai_engine;
     } else {
-      container.innerHTML = preds.map(pred => {
-        const isCrit = pred.risk_level === 'CRITICAL' || pred.rpn >= 120;
-        const borderCol = isCrit ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)';
-        const bgBadge = isCrit ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
-        const textBadge = isCrit ? '#f87171' : '#fbbf24';
-        const icon = isCrit ? '🚨' : '⚠️';
+      if (statusDot) statusDot.textContent = '🟡';
+      if (statusText) statusText.textContent = 'PFMEA Expert Engine (Ready)';
+      if (statusBadge) {
+        statusBadge.style.background = 'rgba(245,158,11,0.15)';
+        statusBadge.style.borderColor = 'rgba(245,158,11,0.3)';
+        statusBadge.style.color = '#f59e0b';
+      }
+    }
 
-        return `
-          <div style="background: rgba(15,23,42,0.85); border: 1px solid ${borderCol}; border-radius: 12px; padding: 1.15rem; margin-bottom: 0.85rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem; flex-wrap:wrap; gap:0.5rem;">
-              <div style="display:flex; align-items:center; gap:0.5rem;">
-                <span style="font-size:1.1rem;">${icon}</span>
-                <span style="font-weight:bold; color:#f8fafc; font-size:0.95rem;">${pred.station}</span>
-                <span style="font-size:0.7rem; background:${bgBadge}; color:${textBadge}; padding:0.15rem 0.5rem; border-radius:6px; font-weight:bold;">${pred.risk_level} (RPN: ${pred.rpn})</span>
-              </div>
-              <span style="font-size:0.72rem; color:#94a3b8; font-family:monospace; background:rgba(30,41,59,0.8); padding:0.15rem 0.5rem; border-radius:4px;">Confidence: ${pred.confidence || '96%'}</span>
-            </div>
-            <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.45; margin:0 0 0.5rem 0;">
-              <strong>Finding:</strong> ${pred.finding} <span style="color:#94a3b8;">(${pred.pfmea_impact})</span>
-            </p>
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding-top:0.45rem; border-top:1px solid rgba(255,255,255,0.06);">
-              <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">
-                💡 <strong>Recommended CLCA:</strong> ${pred.recommended_action}
-              </div>
-              <button type="button" class="btn-select" onclick="openCAPAFromPFMEA('${pred.station_code || ''}', '${escapeHtml(pred.finding)}', '${isCrit ? 'HIGH' : 'MEDIUM'}')" style="padding:0.25rem 0.6rem; font-size:0.72rem; color:#34d399; border-color:rgba(52,211,153,0.4); font-weight:bold;">
-                + Open CAPA
-              </button>
-            </div>
+    if (!data || !data.kpis) {
+      if (container) {
+        container.innerHTML = `
+          <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 2rem 1.5rem; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⚠️</div>
+            <div style="font-size: 1.05rem; font-weight: bold; color: #f87171; margin-bottom: 0.35rem;">Could not load AI Insights</div>
+            <p style="font-size: 0.85rem; color: #94a3b8; max-width: 480px; margin: 0 auto;">Please verify network connection or configure the AI API link above.</p>
           </div>`;
-      }).join('');
+      }
+      return;
     }
-  }
 
-  // 5. Render PFMEA Matrix Table
-  if (pfmeaTbody) {
+    // 2. Update KPI Ribbon
+    const kpis = data.kpis;
+    const elComp = document.getElementById('ai-kpi-compliance');
+    const elTotal = document.getElementById('ai-kpi-total-audits');
+    const elAnom = document.getElementById('ai-kpi-anomalies');
+    const elRpn = document.getElementById('ai-kpi-max-rpn');
+
+    if (elComp) {
+      elComp.textContent = `${kpis.overall_compliance || 100}%`;
+      elComp.style.color = (kpis.overall_compliance >= 95) ? '#34d399' : (kpis.overall_compliance >= 90 ? '#f59e0b' : '#ef4444');
+    }
+    if (elTotal) elTotal.textContent = (kpis.total_audits || 0).toLocaleString();
+    if (elAnom) {
+      const totalAnom = (kpis.critical_count || 0) + (kpis.moderate_count || 0);
+      elAnom.textContent = `${totalAnom} Stations`;
+      elAnom.style.color = totalAnom > 0 ? (kpis.critical_count > 0 ? '#ef4444' : '#f59e0b') : '#34d399';
+    }
+    if (elRpn) {
+      elRpn.textContent = kpis.max_rpn || 18;
+      elRpn.style.color = (kpis.max_rpn >= 120) ? '#ef4444' : (kpis.max_rpn >= 60 ? '#f59e0b' : '#34d399');
+    }
+
+    // 3. Render AI Synthesis Card
+    if (synthBody) {
+      const rawMarkdown = data.trend_synthesis || '';
+      synthBody.innerHTML = formatAISynthesisMarkdown(rawMarkdown);
+    }
+
+    // 4. Render Active Anomaly Warning Cards
+    const preds = data.predictions || [];
+    window.currentAIPredictions = preds;
+
+    if (container) {
+      if (preds.length === 0) {
+        container.innerHTML = `
+          <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(52,211,153,0.3); border-radius: 12px; padding: 2rem 1.5rem; text-align: center;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🟢</div>
+            <div style="font-size: 1.05rem; font-weight: bold; color: #34d399; margin-bottom: 0.35rem;">AI 全线制程质量稳定 (All Lines Operating in Statistical Quality Control)</div>
+            <p style="font-size: 0.82rem; color: #94a3b8; max-width: 520px; margin: 0 auto; line-height: 1.5;">
+              当前所选时间段内未检测到连续失效或异常漂移。所有 16 条生产线均符合 IATF 16949 / IPC-A-610 巡检基准。
+            </p>
+          </div>`;
+      } else {
+        container.innerHTML = preds.map((pred, idx) => {
+          const isCrit = pred.risk_level === 'CRITICAL' || pred.rpn >= 120;
+          const borderCol = isCrit ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)';
+          const bgBadge = isCrit ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
+          const textBadge = isCrit ? '#f87171' : '#fbbf24';
+          const icon = isCrit ? '🚨' : '⚠️';
+
+          return `
+            <div style="background: rgba(15,23,42,0.85); border: 1px solid ${borderCol}; border-radius: 12px; padding: 1.15rem; margin-bottom: 0.85rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem; flex-wrap:wrap; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <span style="font-size:1.1rem;">${icon}</span>
+                  <span style="font-weight:bold; color:#f8fafc; font-size:0.95rem;">${escapeHtml(pred.station)}</span>
+                  <span style="font-size:0.7rem; background:${bgBadge}; color:${textBadge}; padding:0.15rem 0.5rem; border-radius:6px; font-weight:bold;">${escapeHtml(pred.risk_level)} (RPN: ${pred.rpn})</span>
+                </div>
+                <span style="font-size:0.72rem; color:#94a3b8; font-family:monospace; background:rgba(30,41,59,0.8); padding:0.15rem 0.5rem; border-radius:4px;">Confidence: ${escapeHtml(pred.confidence || '96%')}</span>
+              </div>
+              <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.45; margin:0 0 0.5rem 0;">
+                <strong>Finding:</strong> ${escapeHtml(pred.finding)} <span style="color:#94a3b8;">(${escapeHtml(pred.pfmea_impact)})</span>
+              </p>
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding-top:0.45rem; border-top:1px solid rgba(255,255,255,0.06);">
+                <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">
+                  💡 <strong>Recommended CLCA:</strong> ${escapeHtml(pred.recommended_action)}
+                </div>
+                <button type="button" class="btn-select" onclick="openCAPAFromPFMEAPred(${idx})" style="padding:0.25rem 0.6rem; font-size:0.72rem; color:#34d399; border-color:rgba(52,211,153,0.4); font-weight:bold;">
+                  + Open CAPA
+                </button>
+              </div>
+            </div>`;
+        }).join('');
+      }
+    }
+
+    // 5. Render PFMEA Matrix Table
     const matrix = data.pfmea_matrix || [];
-    const totalBadge = document.getElementById('pfmea-total-badge');
-    if (totalBadge) totalBadge.textContent = `${matrix.length} Evaluated Stations`;
+    window.currentAIPFMEAMatrix = matrix;
 
-    if (matrix.length === 0) {
-      pfmeaTbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:1.5rem; color:#64748b;">No station data available for current filter.</td></tr>';
-    } else {
-      pfmeaTbody.innerHTML = matrix.map(row => {
-        let rpnBg = 'rgba(52,211,153,0.15)';
-        let rpnColor = '#34d399';
-        if (row.rpn >= 120) { rpnBg = 'rgba(239,68,68,0.2)'; rpnColor = '#f87171'; }
-        else if (row.rpn >= 60) { rpnBg = 'rgba(245,158,11,0.2)'; rpnColor = '#fbbf24'; }
+    if (pfmeaTbody) {
+      const totalBadge = document.getElementById('pfmea-total-badge');
+      if (totalBadge) totalBadge.textContent = `${matrix.length} Evaluated Stations`;
 
-        return `
-          <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
-            <td style="padding:0.6rem 0.75rem; font-weight:600; color:#f8fafc;">
-              <div>${row.station_name}</div>
-              <div style="font-size:0.7rem; color:#64748b; font-family:monospace;">${row.station_code} | ${row.line_name}</div>
-            </td>
-            <td style="padding:0.6rem 0.75rem; color:#94a3b8;">${row.process}</td>
-            <td style="padding:0.6rem 0.75rem; color:#cbd5e1; max-width:240px;">
-              <div style="font-weight:500;">${row.failure_mode}</div>
-              <div style="font-size:0.68rem; color:#64748b; margin-top:2px;">Effect: ${row.effect}</div>
-            </td>
-            <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;">${row.severity}</td>
-            <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;" title="Fail rate: ${row.fail_rate}% (${row.fail_count}/${row.total_audits})">${row.occurrence}</td>
-            <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;">${row.detection}</td>
-            <td style="padding:0.6rem 0.75rem; text-align:center;">
-              <span style="font-family:monospace; font-weight:bold; font-size:0.85rem; padding:0.15rem 0.45rem; border-radius:6px; background:${rpnBg}; color:${rpnColor};">${row.rpn}</span>
-            </td>
-            <td style="padding:0.6rem 0.75rem;">
-              <span style="font-size:0.7rem; padding:0.15rem 0.45rem; border-radius:4px; font-weight:bold; background:${rpnBg}; color:${rpnColor};">${row.risk_level}</span>
-            </td>
-            <td style="padding:0.6rem 0.75rem; font-size:0.75rem; color:#94a3b8; max-width:260px;">${row.recommended_action}</td>
-            <td style="padding:0.6rem 0.75rem; text-align:center;">
-              <button type="button" class="btn-select" onclick="openCAPAFromPFMEA('${row.station_code}', '${escapeHtml(row.failure_mode)}', '${row.severity >= 8 ? 'HIGH' : 'MEDIUM'}')" style="padding:0.25rem 0.5rem; font-size:0.7rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);" title="Create CAPA Ticket">
-                + CAPA
-              </button>
-            </td>
-          </tr>`;
-      }).join('');
+      if (matrix.length === 0) {
+        pfmeaTbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:1.5rem; color:#64748b;">No station data available for current filter.</td></tr>';
+      } else {
+        pfmeaTbody.innerHTML = matrix.map((row, idx) => {
+          let rpnBg = 'rgba(52,211,153,0.15)';
+          let rpnColor = '#34d399';
+          if (row.rpn >= 120) { rpnBg = 'rgba(239,68,68,0.2)'; rpnColor = '#f87171'; }
+          else if (row.rpn >= 60) { rpnBg = 'rgba(245,158,11,0.2)'; rpnColor = '#fbbf24'; }
+
+          return `
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+              <td style="padding:0.6rem 0.75rem; font-weight:600; color:#f8fafc;">
+                <div>${escapeHtml(row.station_name)}</div>
+                <div style="font-size:0.7rem; color:#64748b; font-family:monospace;">${escapeHtml(row.station_code)} | ${escapeHtml(row.line_name)}</div>
+              </td>
+              <td style="padding:0.6rem 0.75rem; color:#94a3b8;">${escapeHtml(row.process)}</td>
+              <td style="padding:0.6rem 0.75rem; color:#cbd5e1; max-width:240px;">
+                <div style="font-weight:500;">${escapeHtml(row.failure_mode)}</div>
+                <div style="font-size:0.68rem; color:#64748b; margin-top:2px;">Effect: ${escapeHtml(row.effect)}</div>
+              </td>
+              <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;">${row.severity}</td>
+              <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;" title="Fail rate: ${row.fail_rate}% (${row.fail_count}/${row.total_audits})">${row.occurrence}</td>
+              <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;">${row.detection}</td>
+              <td style="padding:0.6rem 0.75rem; text-align:center;">
+                <span style="font-family:monospace; font-weight:bold; font-size:0.85rem; padding:0.15rem 0.45rem; border-radius:6px; background:${rpnBg}; color:${rpnColor};">${row.rpn}</span>
+              </td>
+              <td style="padding:0.6rem 0.75rem;">
+                <span style="font-size:0.7rem; padding:0.15rem 0.45rem; border-radius:4px; font-weight:bold; background:${rpnBg}; color:${rpnColor};">${escapeHtml(row.risk_level)}</span>
+              </td>
+              <td style="padding:0.6rem 0.75rem; font-size:0.75rem; color:#94a3b8; max-width:260px;">${escapeHtml(row.recommended_action)}</td>
+              <td style="padding:0.6rem 0.75rem; text-align:center;">
+                <button type="button" class="btn-select" onclick="openCAPAFromPFMEARow(${idx})" style="padding:0.25rem 0.5rem; font-size:0.7rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);" title="Create CAPA Ticket">
+                  + CAPA
+                </button>
+              </td>
+            </tr>`;
+        }).join('');
+      }
     }
+  } catch (renderErr) {
+    console.error("Error rendering AI Insights / PFMEA matrix:", renderErr);
   }
 }
 
@@ -3290,6 +3316,19 @@ function openCAPAFromPFMEA(stCode, failureMode, severity) {
   }, 250);
 }
 
+function openCAPAFromPFMEAPred(idx) {
+  const pred = (window.currentAIPredictions || [])[idx];
+  if (!pred) return;
+  const isCrit = pred.risk_level === 'CRITICAL' || pred.rpn >= 120;
+  openCAPAFromPFMEA(pred.station_code || '', pred.finding || '', isCrit ? 'HIGH' : 'MEDIUM');
+}
+
+function openCAPAFromPFMEARow(idx) {
+  const row = (window.currentAIPFMEAMatrix || [])[idx];
+  if (!row) return;
+  openCAPAFromPFMEA(row.station_code || '', row.failure_mode || '', (row.severity >= 8) ? 'HIGH' : 'MEDIUM');
+}
+
 // Window exposures
 window.loadAIInsights = loadAIInsights;
 window.triggerManualAIAnalysis = triggerManualAIAnalysis;
@@ -3300,6 +3339,8 @@ window.toggleAIKeyVisibility = toggleAIKeyVisibility;
 window.testAIConnection = testAIConnection;
 window.saveAIConfigAndRun = saveAIConfigAndRun;
 window.openCAPAFromPFMEA = openCAPAFromPFMEA;
+window.openCAPAFromPFMEAPred = openCAPAFromPFMEAPred;
+window.openCAPAFromPFMEARow = openCAPAFromPFMEARow;
 
 // QR Camera Scanner Engine
 function openQrScanner() {
