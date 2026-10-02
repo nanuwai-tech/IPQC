@@ -677,7 +677,7 @@
       <button type="button" class="btn-select" data-step="5" onclick="switchFaiStep(5)" style="flex:1;font-size:0.75rem;padding:0.5rem 0.4rem;">5. Sign-off & Release</button>
     </div>
 
-    <form id="form-fai-wizard" onsubmit="event.preventDefault(); submitFaiWizard();">
+    <form id="form-fai-wizard" novalidate onsubmit="event.preventDefault(); submitFaiWizard();">
       <!-- STEP 1: Basic Production & Lot Info -->
       <div id="fai-step-1" class="fai-step-pane">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem;">
@@ -716,11 +716,11 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:1rem;">
           <div>
             <label style="font-size:0.8rem;color:var(--text-muted);"><span class="lang-en">Work Order:</span><span class="lang-zh">工令:</span><span class="lang-th">Work Order:</span></label>
-            <input type="text" id="fai-inp-wo" class="login-input" placeholder="e.g. WO-20260907-001" required style="width:100%;margin-top:0.3rem;">
+            <input type="text" id="fai-inp-wo" class="login-input" placeholder="e.g. WO-20260907-001" style="width:100%;margin-top:0.3rem;">
           </div>
           <div>
             <label style="font-size:0.8rem;color:var(--text-muted);"><span class="lang-en">Product Model:</span><span class="lang-zh">機種:</span><span class="lang-th">Product Model:</span></label>
-            <input type="text" id="fai-inp-model" class="login-input" placeholder="e.g. PRX-8800-V2" required style="width:100%;margin-top:0.3rem;">
+            <input type="text" id="fai-inp-model" class="login-input" placeholder="e.g. PRX-8800-V2" style="width:100%;margin-top:0.3rem;">
           </div>
           <div>
             <label style="font-size:0.8rem;color:var(--text-muted);"><span class="lang-en">Customer:</span><span class="lang-zh">客戶:</span><span class="lang-th">Customer:</span></label>
@@ -1047,11 +1047,11 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin-bottom:1.5rem;">
           <div style="background:rgba(15,23,42,0.6);border:1px solid var(--border-color);border-radius:10px;padding:1rem;">
             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.4rem;">QC Inspector (檢驗員 / ผู้ตรวจสอบ):</label>
-            <input type="text" id="fai-inp-auditor" class="login-input" required style="width:100%;font-weight:bold;color:#38bdf8;">
+            <input type="text" id="fai-inp-auditor" class="login-input" style="width:100%;font-weight:bold;color:#38bdf8;">
           </div>
           <div style="background:rgba(15,23,42,0.6);border:1px solid var(--border-color);border-radius:10px;padding:1rem;">
             <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.4rem;">Verifier / Approver (審核人 / ผู้อนุมัติ):</label>
-            <input type="text" id="fai-inp-verifier" class="login-input" value="" required style="width:100%;font-weight:bold;color:#34d399;">
+            <input type="text" id="fai-inp-verifier" class="login-input" value="" style="width:100%;font-weight:bold;color:#34d399;">
           </div>
         </div>
       </div>
@@ -1062,7 +1062,7 @@
         <div style="display:flex;gap:0.75rem;">
           <button type="button" class="btn-select" onclick="closeFaiWizard()">Cancel</button>
           <button type="button" class="btn-primary" id="btn-fai-next" onclick="nextFaiStep()">Next Step →</button>
-          <button type="submit" class="btn-primary" id="btn-fai-submit" style="display:none;background:#10b981;border-color:#059669;">
+          <button type="button" class="btn-primary" id="btn-fai-submit" onclick="submitFaiWizard()" style="display:none;background:#10b981;border-color:#059669;">
             💾 Submit & Release Article (發布)
           </button>
         </div>

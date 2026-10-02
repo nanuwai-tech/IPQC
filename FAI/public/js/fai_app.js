@@ -3482,8 +3482,14 @@ function openFaiWizard(type = 'FIRST_ARTICLE') {
   if (auditorInp) {
     const usrName = (typeof currentUser !== 'undefined' && currentUser?.full_name) 
       ? currentUser.full_name 
-      : (document.getElementById('user-display-name')?.textContent || 'QC Inspector');
-    auditorInp.value = usrName;
+      : (document.getElementById('user-display-name')?.textContent?.trim() || 'QC Inspector');
+    auditorInp.value = usrName || 'QC Inspector';
+  }
+
+  // Pre-fill default verifier if empty
+  const verifierInp = document.getElementById('fai-inp-verifier');
+  if (verifierInp && !verifierInp.value) {
+    verifierInp.value = '1';
   }
 
   // Pre-fill time
@@ -3491,6 +3497,17 @@ function openFaiWizard(type = 'FIRST_ARTICLE') {
   const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
   const timeInp = document.getElementById('fai-inp-fa-time');
   if (timeInp && !timeInp.value) timeInp.value = timeStr;
+
+  // Pre-fill default Work Order & Model if empty
+  const woInp = document.getElementById('fai-inp-wo');
+  if (woInp && !woInp.value) {
+    const dStr = now.getFullYear().toString() + String(now.getMonth() + 1).padStart(2, '0') + String(now.getDate()).padStart(2, '0');
+    woInp.value = 'WO-' + dStr + '-001';
+  }
+  const modelInp = document.getElementById('fai-inp-model');
+  if (modelInp && !modelInp.value) {
+    modelInp.value = (typeof currentActiveMaster !== 'undefined' && currentActiveMaster?.model_no) ? currentActiveMaster.model_no : 'PRX-8800';
+  }
 
   // Build 16 Critical Components Rows
   renderFaiCriticalComponentsRows();
@@ -3573,6 +3590,20 @@ function prevFaiStep() {
 }
 
 function nextFaiStep() {
+  if (currentFaiStep === 1) {
+    const wo = document.getElementById('fai-inp-wo')?.value?.trim();
+    const model = document.getElementById('fai-inp-model')?.value?.trim();
+    if (!wo) {
+      alert("Please enter Work Order (工令) before proceeding to next step.");
+      document.getElementById('fai-inp-wo')?.focus();
+      return;
+    }
+    if (!model) {
+      alert("Please enter Product Model (機種) before proceeding to next step.");
+      document.getElementById('fai-inp-model')?.focus();
+      return;
+    }
+  }
   if (currentFaiStep < 5) switchFaiStep(currentFaiStep + 1);
 }
 
@@ -3941,6 +3972,38 @@ function updateFaiQualityGate() {
 // Submit Full FAI Wizard Payload
 async function submitFaiWizard() {
   const submitBtn = document.getElementById('btn-fai-submit');
+
+  // Pre-validate critical fields before submitting
+  const workOrder = document.getElementById('fai-inp-wo')?.value?.trim();
+  const modelNo = document.getElementById('fai-inp-model')?.value?.trim();
+  const auditor = document.getElementById('fai-inp-auditor')?.value?.trim();
+  const verifier = document.getElementById('fai-inp-verifier')?.value?.trim();
+
+  if (!workOrder) {
+    alert(typeof currentLang !== 'undefined' && currentLang === 'zh' ? '請在第1步填寫工令 (Work Order)' : 'Please enter Work Order (工令) in Step 1.');
+    switchFaiStep(1);
+    document.getElementById('fai-inp-wo')?.focus();
+    return;
+  }
+  if (!modelNo) {
+    alert(typeof currentLang !== 'undefined' && currentLang === 'zh' ? '請在第1步填寫機種 (Product Model)' : 'Please enter Product Model (機種) in Step 1.');
+    switchFaiStep(1);
+    document.getElementById('fai-inp-model')?.focus();
+    return;
+  }
+  if (!auditor) {
+    alert(typeof currentLang !== 'undefined' && currentLang === 'zh' ? '請在第5步填寫檢驗員 (QC Inspector)' : 'Please enter QC Inspector (檢驗員) in Step 5.');
+    switchFaiStep(5);
+    document.getElementById('fai-inp-auditor')?.focus();
+    return;
+  }
+  if (!verifier) {
+    alert(typeof currentLang !== 'undefined' && currentLang === 'zh' ? '請在第5步填寫審核人 (Verifier / Approver)' : 'Please enter Verifier / Approver (審核人) in Step 5.');
+    switchFaiStep(5);
+    document.getElementById('fai-inp-verifier')?.focus();
+    return;
+  }
+
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.textContent = '⏳ Submitting & Releasing...';
@@ -3953,13 +4016,11 @@ async function submitFaiWizard() {
     const auditType = document.getElementById('fai-inp-type')?.value || 'FIRST_ARTICLE';
     const processType = document.getElementById('fai-inp-process')?.value || 'SOLDER_PASTE';
     const lineName = document.getElementById('fai-inp-line')?.value || 'SMT Line T1';
-    const workOrder = document.getElementById('fai-inp-wo')?.value || 'WO-001';
-    const modelNo = document.getElementById('fai-inp-model')?.value || 'PRX-001';
     const customer = document.getElementById('fai-inp-customer')?.value || '';
     const shift = document.getElementById('fai-inp-shift')?.value || 'Day Shift';
     const greenHf = document.getElementById('fai-inp-green')?.value || 'Green/HF';
-    const lotQty = parseInt(document.getElementById('fai-inp-lot')?.value || '1000');
-    const sampleQty = parseInt(document.getElementById('fai-inp-sample')?.value || '5');
+    const lotQty = parseInt(document.getElementById('fai-inp-lot')?.value || '1000') || 1000;
+    const sampleQty = parseInt(document.getElementById('fai-inp-sample')?.value || '5') || 5;
 
     // Step 2
     const pcbPn = document.getElementById('fai-inp-pcb-pn')?.value || '';
@@ -4026,8 +4087,6 @@ async function submitFaiWizard() {
 
     // Step 5: Sign-off
     const pcbaPhoto = document.getElementById('fai-inp-pcba-photo')?.value || '';
-    const auditor = document.getElementById('fai-inp-auditor')?.value || 'QC Inspector';
-    const verifier = document.getElementById('fai-inp-verifier')?.value || 'Verifier';
 
     const payload = {
       audit_id: auditId,

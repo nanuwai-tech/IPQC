@@ -326,9 +326,9 @@ class FAIAuditSubmitModel(BaseModel):
     audit_id: str
     audit_type: Optional[str] = "FIRST_ARTICLE" # FIRST_ARTICLE or LAST_ARTICLE
     process_type: Optional[str] = "SOLDER_PASTE" # SOLDER_PASTE or RED_GLUE
-    line_name: str
-    work_order: str
-    model_no: str
+    line_name: Optional[str] = "SMT Line T1"
+    work_order: Optional[str] = "WO-001"
+    model_no: Optional[str] = "PRX-001"
     customer: Optional[str] = ""
     shift: Optional[str] = "Day Shift"
     audit_time: Optional[str] = ""
@@ -1997,17 +1997,17 @@ def submit_fai_audit(data: FAIAuditSubmitModel):
     
     # Store to Supabase
     supabase_db_query("fai_audits", method="POST", data={
-        "id": data.audit_id,
+        "audit_id": data.audit_id,
         "audit_type": data.audit_type,
-        "process_type": data.process_type,
-        "line_name": data.line_name,
-        "work_order": data.work_order,
-        "model_no": data.model_no,
-        "customer": data.customer,
-        "shift": data.shift,
+        "process_type": data.process_type or "SOLDER_PASTE",
+        "line_name": data.line_name or "SMT Line T1",
+        "work_order": data.work_order or "WO-001",
+        "model_no": data.model_no or "PRX-001",
+        "customer": data.customer or "",
+        "shift": data.shift or "Day Shift",
         "audit_time": audit_record["audit_time"],
-        "auditor": data.auditor,
-        "verifier": data.verifier,
+        "auditor": data.auditor or "QC Inspector",
+        "verifier": data.verifier or "Verifier",
         "overall_status": audit_record["overall_status"],
         "payload": json.dumps(audit_record)
     })
