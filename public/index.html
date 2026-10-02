@@ -1666,8 +1666,8 @@
           <button type="button" class="btn-select" onclick="openMasterCameraCapture()" style="font-size:0.78rem;padding:0.45rem 0.65rem;border-color:#a78bfa;color:#a78bfa;font-weight:bold;" title="Capture from camera / USB cam">
             <span>📷 Camera</span>
           </button>
-          <button type="button" class="btn-select" onclick="detectLandmarksOnSetupMaster()" style="font-size:0.78rem;padding:0.45rem 0.65rem;border-color:#f59e0b;color:#f59e0b;font-weight:bold;" title="Auto-Detect Landmarks">
-            <span>🎯 Auto</span>
+          <button type="button" id="btn-master-auto-calibration" class="btn-select" onclick="toggleAutoCalibrationMode()" style="font-size:0.78rem;padding:0.45rem 0.65rem;border-color:#f59e0b;color:#f59e0b;background:rgba(245,158,11,0.12);font-weight:bold;" title="Auto calibration mode is PAUSED (Default). Click to run Auto calibration.">
+            <span>⏸️ Pause</span>
           </button>
           <button type="button" id="btn-add-roi" class="btn-select" style="font-size:0.78rem;padding:0.45rem 0.65rem;border-color:#34d399;color:#34d399;font-weight:bold;">
             <span>➕ Add ROI</span>
@@ -2583,6 +2583,6 @@
       </div>
     </div>
   </div>
-  <script src="js/fai_app.js?v=103"></script>
+  <script src="js/fai_app.js?v=104"></script>
 </body>
 </html>

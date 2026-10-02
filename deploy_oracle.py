@@ -2,7 +2,21 @@ import tarfile
 import subprocess
 import os
 
-files_to_update = ['api/db_adapter.py', 'api/index.py', 'api/pcba_inspection_service.py', 'api/requirements.txt', 'deploy_vercel.bat', 'public/js/fai_app.js', 'requirements.txt', 'setup_supabase_db.py', 'api/r2_storage.py', 'test_r2_kv.py']
+files_to_update = [
+    'public/index.html',
+    'public/js/fai_app.js',
+    'FAI/public/fai_index.html',
+    'FAI/public/js/fai_app.js',
+    'api/db_adapter.py',
+    'api/index.py',
+    'api/pcba_inspection_service.py',
+    'api/requirements.txt',
+    'deploy_vercel.bat',
+    'requirements.txt',
+    'setup_supabase_db.py',
+    'api/r2_storage.py',
+    'test_r2_kv.py'
+]
 tar_path = 'dist_update_fai.tar.gz'
 
 print(f"Creating {tar_path}...")

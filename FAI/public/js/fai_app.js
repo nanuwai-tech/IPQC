@@ -5127,6 +5127,9 @@ function openMasterSetupModalFor(modelNo, pcbPn) {
   const modal = document.getElementById('modal-master-setup');
   if (!modal) return;
   
+  autoCalibrationMode = 'pause';
+  updateAutoCalibrationButtonUI();
+
   const mInp = document.getElementById('setup-master-model');
   const pInp = document.getElementById('setup-master-pn');
   if (mInp) mInp.value = modelNo;
@@ -5242,6 +5245,9 @@ function openMasterSetupModal() {
   if (!modal) return;
   modal.classList.add('active');
   
+  autoCalibrationMode = 'pause';
+  updateAutoCalibrationButtonUI();
+
   const mInp = document.getElementById('fai-inp-model');
   const pInp = document.getElementById('fai-inp-pcb-pn');
   if (mInp && mInp.value) document.getElementById('setup-master-model').value = mInp.value;
@@ -5338,6 +5344,39 @@ function deleteLandmark(id) {
   const canvas = document.getElementById('setup-master-canvas');
   if (masterImg && canvas) drawMasterLandmarksOverlay(currentMasterLandmarks, masterImg, canvas);
   renderSetupLandmarksTable(currentMasterLandmarks);
+}
+
+let autoCalibrationMode = 'pause';
+
+function updateAutoCalibrationButtonUI() {
+  const btn = document.getElementById('btn-master-auto-calibration');
+  if (!btn) return;
+  if (autoCalibrationMode === 'pause') {
+    btn.innerHTML = '<span>⏸️ Pause</span>';
+    btn.style.borderColor = '#f59e0b';
+    btn.style.color = '#f59e0b';
+    btn.style.background = 'rgba(245, 158, 11, 0.12)';
+    btn.title = 'Auto calibration mode is PAUSED (Default). Click to run Auto calibration.';
+  } else {
+    btn.innerHTML = '<span>🎯 Auto</span>';
+    btn.style.borderColor = '#34d399';
+    btn.style.color = '#34d399';
+    btn.style.background = 'rgba(52, 211, 153, 0.15)';
+    btn.title = 'Auto calibration mode is ACTIVE. Click to Pause.';
+  }
+}
+
+async function toggleAutoCalibrationMode() {
+  if (autoCalibrationMode === 'pause') {
+    autoCalibrationMode = 'auto';
+    updateAutoCalibrationButtonUI();
+    showToast('Auto Calibration', 'Switched to Auto calibration mode. Detecting landmarks...', 'info');
+    await detectLandmarksOnSetupMaster();
+  } else {
+    autoCalibrationMode = 'pause';
+    updateAutoCalibrationButtonUI();
+    showToast('Auto Calibration', 'Auto calibration paused.', 'warning');
+  }
 }
 
 async function detectLandmarksOnSetupMaster() {
@@ -5531,7 +5570,16 @@ function proceedWithMasterImage() {
   const masterImg = document.getElementById('setup-master-img');
   if (masterImg && pendingMasterB64) {
     masterImg.src = pendingMasterB64;
-    masterImg.onload = () => detectLandmarksOnSetupMaster();
+    masterImg.onload = () => {
+      if (autoCalibrationMode === 'auto') {
+        detectLandmarksOnSetupMaster();
+      } else {
+        const canvas = document.getElementById('setup-master-canvas');
+        if (canvas && currentMasterLandmarks) {
+          drawMasterLandmarksOverlay(currentMasterLandmarks, masterImg, canvas);
+        }
+      }
+    };
   }
 }
 
@@ -6892,3 +6940,9 @@ function emDeleteLandmark(idx) {
   renderEditModeCanvas();
   renderEditModeLandmarkList();
 }
+
+window.toggleAutoCalibrationMode = toggleAutoCalibrationMode;
+window.updateAutoCalibrationButtonUI = updateAutoCalibrationButtonUI;
+window.openMasterSetupModal = openMasterSetupModal;
+window.openMasterSetupModalFor = openMasterSetupModalFor;
+window.closeMasterSetupModal = closeMasterSetupModal;
