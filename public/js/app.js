@@ -1,4 +1,4 @@
-﻿// Global Application State
+// Global Application State
 let currentLang = 'zh';
 let currentUser = null;
 let authToken = localStorage.getItem('ipqc_token') || null;
@@ -1825,6 +1825,7 @@ function setupNavigation() {
       if (targetTab === 'history') loadAuditHistory();
       if (targetTab === 'users') loadUsersList();
       if (targetTab === 'qrgen') renderQrStickers();
+      if (targetTab === 'ai') loadAIInsights();
       if (targetTab === 'fai') {
         if (typeof loadFaiHistory === 'function') loadFaiHistory();
         if (typeof loadActiveMasterForInspection === 'function') loadActiveMasterForInspection();
@@ -2909,47 +2910,396 @@ function renderQrStickers() {
   });
 }
 
-// AI INSIGHTS & QUALITY RISK FORECAST (100% LIVE REAL-TIME)
-async function loadAIInsights() {
-  const container = document.getElementById('container-ai-insights');
-  if (!container) return;
+// ==============================================================================
+// AI-POWERED INTELLIGENT TREND WARNING & PFMEA-LINKED ANALYSIS ENGINE
+// ==============================================================================
 
-  let insights = null;
+let aiConfigCache = {
+  provider: localStorage.getItem('ipqc_ai_provider') || 'auto',
+  gemini_key: localStorage.getItem('ipqc_ai_gemini_key') || '',
+  endpoint: localStorage.getItem('ipqc_ai_endpoint') || 'http://192.9.135.138:8000/v1',
+  model: localStorage.getItem('ipqc_ai_model') || ''
+};
+
+async function loadAIInsights(forceManual = false) {
+  const container = document.getElementById('container-ai-insights');
+  const synthBody = document.getElementById('ai-synthesis-body');
+  const pfmeaTbody = document.getElementById('pfmea-matrix-tbody');
+  const runBtn = document.getElementById('btn-run-ai-analysis');
+  const statusBadge = document.getElementById('ai-engine-status-badge');
+  const statusText = document.getElementById('ai-engine-status-text');
+  const statusDot = document.getElementById('ai-engine-status-dot');
+  const latencyBadge = document.getElementById('ai-engine-latency-badge');
+
+  const lineFilter = document.getElementById('ai-filter-line')?.value || 'ALL';
+  const daysFilter = parseInt(document.getElementById('ai-filter-days')?.value || '30', 10);
+
+  if (runBtn) runBtn.disabled = true;
+  if (statusDot) statusDot.textContent = '⏳';
+  if (statusText) statusText.textContent = 'Analyzing Real-time Findings...';
+
+  let data = null;
   try {
-    const res = await apiFetch('/api/ai/insights');
-    if (res.ok) insights = await res.json();
-  } catch (e) {
-    console.warn("Could not fetch AI insights:", e);
+    const payload = {
+      line: lineFilter,
+      days: daysFilter,
+      provider: aiConfigCache.provider || 'auto',
+      api_key: aiConfigCache.gemini_key || '',
+      model: aiConfigCache.model || '',
+      custom_endpoint: aiConfigCache.endpoint || ''
+    };
+
+    const res = await apiFetch('/api/ai/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      data = await res.json();
+    } else {
+      const getRes = await apiFetch(`/api/ai/insights?line=${encodeURIComponent(lineFilter)}&days=${daysFilter}&provider=${encodeURIComponent(aiConfigCache.provider)}`);
+      if (getRes.ok) data = await getRes.json();
+    }
+  } catch (err) {
+    console.warn("AI Insights load error:", err);
+  } finally {
+    if (runBtn) runBtn.disabled = false;
   }
 
-  if (!insights || !insights.predictions || insights.predictions.length === 0) {
-    container.innerHTML = `
-      <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(52,211,153,0.3); border-radius: 12px; padding: 2.5rem 1.5rem; text-align: center;">
-        <div style="font-size: 2.8rem; margin-bottom: 0.75rem;">🟢</div>
-        <div style="font-size: 1.15rem; font-weight: bold; color: #34d399; margin-bottom: 0.35rem;">AI 全线制程质量稳定 (All Lines Operating in Stable Quality Control)</div>
-        <p style="font-size: 0.85rem; color: #94a3b8; max-width: 480px; margin: 0 auto; line-height: 1.5;">
-          当前 16 条生产线均未检测到连续失效、参数偏移或高风险趋势。AI 引擎持续监控巡检实时数据与 PFMEA 严重度等级。
-        </p>
-      </div>
-    `;
+  // 1. Update AI Engine Status Bar
+  if (data && data.ai_engine) {
+    if (statusDot) statusDot.textContent = '🟢';
+    if (statusText) statusText.textContent = `${data.ai_engine}`;
+    if (statusBadge) {
+      statusBadge.style.background = 'rgba(52,211,153,0.15)';
+      statusBadge.style.borderColor = 'rgba(52,211,153,0.3)';
+      statusBadge.style.color = '#34d399';
+    }
+    if (latencyBadge && data.ai_latency_ms !== undefined) {
+      latencyBadge.textContent = `${data.ai_latency_ms}ms`;
+      latencyBadge.style.display = 'inline-block';
+    }
+    const engineTag = document.getElementById('ai-synthesis-engine-tag');
+    if (engineTag) engineTag.textContent = data.ai_status || data.ai_engine;
+  } else {
+    if (statusDot) statusDot.textContent = '🟡';
+    if (statusText) statusText.textContent = 'PFMEA Expert Engine (Ready)';
+    if (statusBadge) {
+      statusBadge.style.background = 'rgba(245,158,11,0.15)';
+      statusBadge.style.borderColor = 'rgba(245,158,11,0.3)';
+      statusBadge.style.color = '#f59e0b';
+    }
+  }
+
+  if (!data || !data.kpis) {
+    if (container) {
+      container.innerHTML = `
+        <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 2rem 1.5rem; text-align: center;">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⚠️</div>
+          <div style="font-size: 1.05rem; font-weight: bold; color: #f87171; margin-bottom: 0.35rem;">Could not load AI Insights</div>
+          <p style="font-size: 0.85rem; color: #94a3b8; max-width: 480px; margin: 0 auto;">Please verify network connection or configure the AI API link above.</p>
+        </div>`;
+    }
     return;
   }
 
-  container.innerHTML = insights.predictions.map(pred => `
-    <div style="background: rgba(15,23,42,0.8); border: 1px solid rgba(239,68,68,0.3); border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span style="font-weight:bold; color:#fca5a5; font-size:0.95rem;">🚨 Anomaly Alert: ${pred.station}</span>
-        <span style="font-size:0.75rem; background:rgba(239,68,68,0.2); color:#f87171; padding:0.15rem 0.5rem; border-radius:6px; font-weight:bold;">Confidence: ${pred.confidence || '95%'}</span>
-      </div>
-      <p style="font-size:0.85rem; color:#cbd5e1; line-height:1.4;">
-        ${pred.finding} (${pred.occurrences_14d || 1} occurrences detected). ${pred.pfmea_impact}
-      </p>
-      <div style="font-size:0.8rem; color:#38bdf8; font-weight:bold; margin-top:0.5rem;">
-        💡 Recommended Action: ${pred.recommended_action}
-      </div>
-    </div>
-  `).join('');
+  // 2. Update KPI Ribbon
+  const kpis = data.kpis;
+  const elComp = document.getElementById('ai-kpi-compliance');
+  const elTotal = document.getElementById('ai-kpi-total-audits');
+  const elAnom = document.getElementById('ai-kpi-anomalies');
+  const elRpn = document.getElementById('ai-kpi-max-rpn');
+
+  if (elComp) {
+    elComp.textContent = `${kpis.overall_compliance || 100}%`;
+    elComp.style.color = (kpis.overall_compliance >= 95) ? '#34d399' : (kpis.overall_compliance >= 90 ? '#f59e0b' : '#ef4444');
+  }
+  if (elTotal) elTotal.textContent = (kpis.total_audits || 0).toLocaleString();
+  if (elAnom) {
+    const totalAnom = (kpis.critical_count || 0) + (kpis.moderate_count || 0);
+    elAnom.textContent = `${totalAnom} Stations`;
+    elAnom.style.color = totalAnom > 0 ? (kpis.critical_count > 0 ? '#ef4444' : '#f59e0b') : '#34d399';
+  }
+  if (elRpn) {
+    elRpn.textContent = kpis.max_rpn || 18;
+    elRpn.style.color = (kpis.max_rpn >= 120) ? '#ef4444' : (kpis.max_rpn >= 60 ? '#f59e0b' : '#34d399');
+  }
+
+  // 3. Render AI Synthesis Card
+  if (synthBody) {
+    const rawMarkdown = data.trend_synthesis || '';
+    synthBody.innerHTML = formatAISynthesisMarkdown(rawMarkdown);
+  }
+
+  // 4. Render Active Anomaly Warning Cards
+  if (container) {
+    const preds = data.predictions || [];
+    if (preds.length === 0) {
+      container.innerHTML = `
+        <div style="background: rgba(15,23,42,0.6); border: 1px solid rgba(52,211,153,0.3); border-radius: 12px; padding: 2rem 1.5rem; text-align: center;">
+          <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🟢</div>
+          <div style="font-size: 1.05rem; font-weight: bold; color: #34d399; margin-bottom: 0.35rem;">AI 全线制程质量稳定 (All Lines Operating in Statistical Quality Control)</div>
+          <p style="font-size: 0.82rem; color: #94a3b8; max-width: 520px; margin: 0 auto; line-height: 1.5;">
+            当前所选时间段内未检测到连续失效或异常漂移。所有 16 条生产线均符合 IATF 16949 / IPC-A-610 巡检基准。
+          </p>
+        </div>`;
+    } else {
+      container.innerHTML = preds.map(pred => {
+        const isCrit = pred.risk_level === 'CRITICAL' || pred.rpn >= 120;
+        const borderCol = isCrit ? 'rgba(239,68,68,0.4)' : 'rgba(245,158,11,0.4)';
+        const bgBadge = isCrit ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)';
+        const textBadge = isCrit ? '#f87171' : '#fbbf24';
+        const icon = isCrit ? '🚨' : '⚠️';
+
+        return `
+          <div style="background: rgba(15,23,42,0.85); border: 1px solid ${borderCol}; border-radius: 12px; padding: 1.15rem; margin-bottom: 0.85rem; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem; flex-wrap:wrap; gap:0.5rem;">
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                <span style="font-size:1.1rem;">${icon}</span>
+                <span style="font-weight:bold; color:#f8fafc; font-size:0.95rem;">${pred.station}</span>
+                <span style="font-size:0.7rem; background:${bgBadge}; color:${textBadge}; padding:0.15rem 0.5rem; border-radius:6px; font-weight:bold;">${pred.risk_level} (RPN: ${pred.rpn})</span>
+              </div>
+              <span style="font-size:0.72rem; color:#94a3b8; font-family:monospace; background:rgba(30,41,59,0.8); padding:0.15rem 0.5rem; border-radius:4px;">Confidence: ${pred.confidence || '96%'}</span>
+            </div>
+            <p style="font-size:0.82rem; color:#cbd5e1; line-height:1.45; margin:0 0 0.5rem 0;">
+              <strong>Finding:</strong> ${pred.finding} <span style="color:#94a3b8;">(${pred.pfmea_impact})</span>
+            </p>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem; padding-top:0.45rem; border-top:1px solid rgba(255,255,255,0.06);">
+              <div style="font-size:0.78rem; color:#38bdf8; font-weight:600;">
+                💡 <strong>Recommended CLCA:</strong> ${pred.recommended_action}
+              </div>
+              <button type="button" class="btn-select" onclick="openCAPAFromPFMEA('${pred.station_code || ''}', '${escapeHtml(pred.finding)}', '${isCrit ? 'HIGH' : 'MEDIUM'}')" style="padding:0.25rem 0.6rem; font-size:0.72rem; color:#34d399; border-color:rgba(52,211,153,0.4); font-weight:bold;">
+                + Open CAPA
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+  }
+
+  // 5. Render PFMEA Matrix Table
+  if (pfmeaTbody) {
+    const matrix = data.pfmea_matrix || [];
+    const totalBadge = document.getElementById('pfmea-total-badge');
+    if (totalBadge) totalBadge.textContent = `${matrix.length} Evaluated Stations`;
+
+    if (matrix.length === 0) {
+      pfmeaTbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:1.5rem; color:#64748b;">No station data available for current filter.</td></tr>';
+    } else {
+      pfmeaTbody.innerHTML = matrix.map(row => {
+        let rpnBg = 'rgba(52,211,153,0.15)';
+        let rpnColor = '#34d399';
+        if (row.rpn >= 120) { rpnBg = 'rgba(239,68,68,0.2)'; rpnColor = '#f87171'; }
+        else if (row.rpn >= 60) { rpnBg = 'rgba(245,158,11,0.2)'; rpnColor = '#fbbf24'; }
+
+        return `
+          <tr style="border-bottom:1px solid rgba(255,255,255,0.06);">
+            <td style="padding:0.6rem 0.75rem; font-weight:600; color:#f8fafc;">
+              <div>${row.station_name}</div>
+              <div style="font-size:0.7rem; color:#64748b; font-family:monospace;">${row.station_code} | ${row.line_name}</div>
+            </td>
+            <td style="padding:0.6rem 0.75rem; color:#94a3b8;">${row.process}</td>
+            <td style="padding:0.6rem 0.75rem; color:#cbd5e1; max-width:240px;">
+              <div style="font-weight:500;">${row.failure_mode}</div>
+              <div style="font-size:0.68rem; color:#64748b; margin-top:2px;">Effect: ${row.effect}</div>
+            </td>
+            <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;">${row.severity}</td>
+            <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;" title="Fail rate: ${row.fail_rate}% (${row.fail_count}/${row.total_audits})">${row.occurrence}</td>
+            <td style="padding:0.6rem 0.75rem; text-align:center; font-family:monospace; font-weight:bold; color:#f8fafc;">${row.detection}</td>
+            <td style="padding:0.6rem 0.75rem; text-align:center;">
+              <span style="font-family:monospace; font-weight:bold; font-size:0.85rem; padding:0.15rem 0.45rem; border-radius:6px; background:${rpnBg}; color:${rpnColor};">${row.rpn}</span>
+            </td>
+            <td style="padding:0.6rem 0.75rem;">
+              <span style="font-size:0.7rem; padding:0.15rem 0.45rem; border-radius:4px; font-weight:bold; background:${rpnBg}; color:${rpnColor};">${row.risk_level}</span>
+            </td>
+            <td style="padding:0.6rem 0.75rem; font-size:0.75rem; color:#94a3b8; max-width:260px;">${row.recommended_action}</td>
+            <td style="padding:0.6rem 0.75rem; text-align:center;">
+              <button type="button" class="btn-select" onclick="openCAPAFromPFMEA('${row.station_code}', '${escapeHtml(row.failure_mode)}', '${row.severity >= 8 ? 'HIGH' : 'MEDIUM'}')" style="padding:0.25rem 0.5rem; font-size:0.7rem; color:#38bdf8; border-color:rgba(56,189,248,0.4);" title="Create CAPA Ticket">
+                + CAPA
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+  }
 }
+
+function formatAISynthesisMarkdown(md) {
+  if (!md) return '<p style="color:#64748b;">No report generated.</p>';
+  let html = md
+    .replace(/^### (.*$)/gim, '<h4 style="color:#38bdf8;margin:0.75rem 0 0.4rem 0;font-size:0.95rem;">$1</h4>')
+    .replace(/^#### (.*$)/gim, '<h5 style="color:#34d399;margin:0.6rem 0 0.35rem 0;font-size:0.88rem;">$1</h5>')
+    .replace(/\*\*(.*?)\*\*/gim, '<strong style="color:#f8fafc;">$1</strong>')
+    .replace(/`([^`]+)`/gim, '<code style="background:rgba(30,41,59,0.9);padding:0.15rem 0.35rem;border-radius:4px;font-family:monospace;color:#38bdf8;font-size:0.8rem;">$1</code>')
+    .replace(/^\- (.*$)/gim, '<div style="margin-left:0.8rem;margin-bottom:0.25rem;">• $1</div>')
+    .replace(/^\d+\. (.*$)/gim, '<div style="margin-left:0.8rem;margin-bottom:0.25rem;">• $1</div>')
+    .replace(/\n\n/gim, '<div style="margin-bottom:0.6rem;"></div>');
+  return html;
+}
+
+function triggerManualAIAnalysis() {
+  loadAIInsights(true);
+  showToast('AI Analysis', 'Executing deep statistical trend scan and PFMEA analysis...', 'info');
+}
+
+function openAIConfigModal() {
+  const modal = document.getElementById('modal-ai-config');
+  if (!modal) return;
+
+  const prov = document.getElementById('cfg-ai-provider');
+  const key = document.getElementById('cfg-ai-gemini-key');
+  const ep = document.getElementById('cfg-ai-endpoint');
+  const mod = document.getElementById('cfg-ai-model');
+
+  if (prov) prov.value = aiConfigCache.provider || 'auto';
+  if (key) key.value = aiConfigCache.gemini_key || '';
+  if (ep) ep.value = aiConfigCache.endpoint || 'http://192.9.135.138:8000/v1';
+  if (mod) mod.value = aiConfigCache.model || '';
+
+  handleAIProviderChange();
+  modal.classList.add('active');
+}
+
+function closeAIConfigModal() {
+  document.getElementById('modal-ai-config')?.classList.remove('active');
+  const res = document.getElementById('cfg-ai-test-result');
+  if (res) res.style.display = 'none';
+}
+
+function handleAIProviderChange() {
+  const prov = document.getElementById('cfg-ai-provider')?.value || 'auto';
+  const gemSec = document.getElementById('cfg-gemini-section');
+  const epSec = document.getElementById('cfg-endpoint-section');
+
+  if (prov === 'gemini') {
+    if (gemSec) gemSec.style.display = 'block';
+    if (epSec) epSec.style.display = 'none';
+  } else if (prov === 'ollama') {
+    if (gemSec) gemSec.style.display = 'none';
+    if (epSec) epSec.style.display = 'block';
+  } else {
+    if (gemSec) gemSec.style.display = 'block';
+    if (epSec) epSec.style.display = 'block';
+  }
+}
+
+function toggleAIKeyVisibility(id) {
+  const inp = document.getElementById(id);
+  if (inp) {
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  }
+}
+
+async function testAIConnection() {
+  const btn = document.getElementById('btn-test-ai-conn');
+  const banner = document.getElementById('cfg-ai-test-result');
+  const prov = document.getElementById('cfg-ai-provider')?.value || 'auto';
+  const key = document.getElementById('cfg-ai-gemini-key')?.value?.trim() || '';
+  const ep = document.getElementById('cfg-ai-endpoint')?.value?.trim() || '';
+  const mod = document.getElementById('cfg-ai-model')?.value?.trim() || '';
+
+  if (btn) btn.disabled = true;
+  if (banner) {
+    banner.style.display = 'block';
+    banner.style.background = 'rgba(56,189,248,0.15)';
+    banner.style.border = '1px solid rgba(56,189,248,0.3)';
+    banner.style.color = '#38bdf8';
+    banner.textContent = '⏳ Testing connection to AI Engine...';
+  }
+
+  try {
+    const res = await apiFetch('/api/ai/test-connection', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        provider: prov,
+        api_key: key,
+        endpoint: ep,
+        model: mod
+      })
+    });
+
+    const data = await res.json();
+    if (banner) {
+      if (data.success) {
+        banner.style.background = 'rgba(52,211,153,0.15)';
+        banner.style.border = '1px solid rgba(52,211,153,0.3)';
+        banner.style.color = '#34d399';
+        banner.textContent = `✓ ${data.engine || 'AI Engine'} Connected! Latency: ${data.latency_ms || 0}ms. Status: ${data.status || 'Active'}`;
+      } else {
+        banner.style.background = 'rgba(239,68,68,0.15)';
+        banner.style.border = '1px solid rgba(239,68,68,0.3)';
+        banner.style.color = '#f87171';
+        banner.textContent = `✕ Connection test failed: ${data.error || 'Server unreachable'}`;
+      }
+    }
+  } catch (err) {
+    if (banner) {
+      banner.style.background = 'rgba(239,68,68,0.15)';
+      banner.style.border = '1px solid rgba(239,68,68,0.3)';
+      banner.style.color = '#f87171';
+      banner.textContent = `✕ Request error: ${err.message}`;
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function saveAIConfigAndRun() {
+  const prov = document.getElementById('cfg-ai-provider')?.value || 'auto';
+  const key = document.getElementById('cfg-ai-gemini-key')?.value?.trim() || '';
+  const ep = document.getElementById('cfg-ai-endpoint')?.value?.trim() || '';
+  const mod = document.getElementById('cfg-ai-model')?.value?.trim() || '';
+
+  aiConfigCache = {
+    provider: prov,
+    gemini_key: key,
+    endpoint: ep,
+    model: mod
+  };
+
+  try {
+    localStorage.setItem('ipqc_ai_provider', prov);
+    localStorage.setItem('ipqc_ai_gemini_key', key);
+    localStorage.setItem('ipqc_ai_endpoint', ep);
+    localStorage.setItem('ipqc_ai_model', mod);
+  } catch (e) {}
+
+  closeAIConfigModal();
+  showToast('Settings Saved', 'AI Engine settings linked successfully. Running analysis...', 'success');
+  loadAIInsights(true);
+}
+
+function openCAPAFromPFMEA(stCode, failureMode, severity) {
+  const dashBtn = document.querySelector('.nav-tab[data-tab="dashboard"]');
+  if (dashBtn) dashBtn.click();
+  if (typeof switchDashboardSubView === 'function') switchDashboardSubView('capa');
+  
+  setTimeout(() => {
+    const modal = document.getElementById('modal-capa-update');
+    if (modal) {
+      modal.classList.add('active');
+      const stInp = document.getElementById('inp-capa-station');
+      const descInp = document.getElementById('inp-capa-defect');
+      const sevInp = document.getElementById('inp-capa-severity');
+      if (stInp) stInp.value = stCode || '';
+      if (descInp) descInp.value = `[PFMEA Link] ${failureMode || 'Process Parameter Drift'}`;
+      if (sevInp) sevInp.value = severity || 'MEDIUM';
+    }
+  }, 250);
+}
+
+// Window exposures
+window.loadAIInsights = loadAIInsights;
+window.triggerManualAIAnalysis = triggerManualAIAnalysis;
+window.openAIConfigModal = openAIConfigModal;
+window.closeAIConfigModal = closeAIConfigModal;
+window.handleAIProviderChange = handleAIProviderChange;
+window.toggleAIKeyVisibility = toggleAIKeyVisibility;
+window.testAIConnection = testAIConnection;
+window.saveAIConfigAndRun = saveAIConfigAndRun;
+window.openCAPAFromPFMEA = openCAPAFromPFMEA;
 
 // QR Camera Scanner Engine
 function openQrScanner() {

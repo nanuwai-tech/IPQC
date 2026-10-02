@@ -256,7 +256,145 @@
     </div>
 
     <div id="b-view-ai" class="b-view-section">
-      <div class="glass-card"><div class="card-title" id="txt-aiTitle">AI Audit Assistant and Risk Linkage</div><p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1.5rem;">Phase 4 predictive anomaly analytics using historical audit findings.</p><div id="container-ai-insights"></div></div>
+      <div class="glass-card" style="min-height: 80vh;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.5rem;">
+          <div>
+            <div class="card-title" id="txt-aiTitle">🤖 AI 智能趋势预警与 PFMEA 联动分析 (AI Trend Warning & PFMEA Risk Linkage)</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top:0.25rem;">Phase 4 predictive anomaly analytics using historical audit findings & IATF 16949 / IPC-A-610 standards.</p>
+          </div>
+          <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+            <div id="ai-engine-status-badge" style="display:flex; align-items:center; gap:0.4rem; padding:0.35rem 0.75rem; border-radius:20px; font-size:0.78rem; font-weight:bold; background:rgba(52,211,153,0.15); color:#34d399; border:1px solid rgba(52,211,153,0.3);">
+              <span id="ai-engine-status-dot">🟢</span>
+              <span id="ai-engine-status-text">Detecting AI Link...</span>
+            </div>
+            <button type="button" onclick="openAIConfigModal()" class="btn-select" style="display:flex; align-items:center; gap:0.4rem; padding:0.35rem 0.75rem; font-size:0.78rem; color:var(--accent-cyan); border-color:var(--accent-cyan);" title="Configure AI API & LLM Models">
+              <span>⚙️</span>
+              <span id="txt-btnAiConfig">AI API Link</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter & Execution Toolbar -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1.25rem; padding:0.75rem 1rem; background:rgba(15,23,42,0.6); border:1px solid var(--border-color); border-radius:10px;">
+          <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <label style="font-size:0.78rem; color:#94a3b8; font-weight:600;">Line:</label>
+              <select id="ai-filter-line" class="btn-select" style="font-size:0.78rem; padding:0.35rem 0.6rem; background:#0f172a; color:#fff;" onchange="loadAIInsights()">
+                <option value="ALL">All 16 Production Lines (全线监控)</option>
+                <option value="SMT Line 1">SMT Line 1 (SMT-1)</option>
+                <option value="SMT Line 2">SMT Line 2 (SMT-2)</option>
+                <option value="SMT Line 3">SMT Line 3 (SMT-3)</option>
+                <option value="SMT Line 4">SMT Line 4 (SMT-4)</option>
+                <option value="SMT Line 5">SMT Line 5 (SMT-5)</option>
+                <option value="SMT Line 6">SMT Line 6 (SMT-6)</option>
+                <option value="DIP Line 1">DIP Line 1 (DIP-1)</option>
+                <option value="DIP Line 2">DIP Line 2 (DIP-2)</option>
+              </select>
+            </div>
+
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <label style="font-size:0.78rem; color:#94a3b8; font-weight:600;">Time Window:</label>
+              <select id="ai-filter-days" class="btn-select" style="font-size:0.78rem; padding:0.35rem 0.6rem; background:#0f172a; color:#fff;" onchange="loadAIInsights()">
+                <option value="7">Last 7 Days (近7天)</option>
+                <option value="14">Last 14 Days (近14天)</option>
+                <option value="30" selected>Last 30 Days (近30天)</option>
+                <option value="0">All Historical Data (全部数据)</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span id="ai-engine-latency-badge" style="font-size:0.72rem; color:#38bdf8; font-family:monospace; background:rgba(15,23,42,0.8); padding:0.25rem 0.5rem; border-radius:6px; border:1px solid rgba(56,189,248,0.3); display:none;"></span>
+            <button type="button" id="btn-run-ai-analysis" onclick="triggerManualAIAnalysis()" class="btn-primary" style="display:flex; align-items:center; gap:0.4rem; padding:0.4rem 0.85rem; font-size:0.78rem; font-weight:bold;">
+              <span id="ai-run-icon">⚡</span>
+              <span id="txt-btnRunAi">Run AI Analysis</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Executive Quality & PFMEA KPI Ribbon -->
+        <div id="ai-kpi-ribbon" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:0.75rem; margin-bottom:1.5rem;">
+          <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem; text-align:center;">
+            <div style="font-size:0.72rem; color:#94a3b8; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase;">Compliance Rate</div>
+            <div id="ai-kpi-compliance" style="font-size:1.6rem; font-weight:bold; color:#34d399; margin-top:0.25rem;">--%</div>
+            <div style="font-size:0.7rem; color:#64748b; margin-top:0.15rem;">Layered Process Audits</div>
+          </div>
+          <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem; text-align:center;">
+            <div style="font-size:0.72rem; color:#94a3b8; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase;">Total Audits Analyzed</div>
+            <div id="ai-kpi-total-audits" style="font-size:1.6rem; font-weight:bold; color:#38bdf8; margin-top:0.25rem;">--</div>
+            <div style="font-size:0.7rem; color:#64748b; margin-top:0.15rem;">Live Database Records</div>
+          </div>
+          <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem; text-align:center;">
+            <div style="font-size:0.72rem; color:#94a3b8; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase;">Anomaly Stations</div>
+            <div id="ai-kpi-anomalies" style="font-size:1.6rem; font-weight:bold; color:#f59e0b; margin-top:0.25rem;">--</div>
+            <div style="font-size:0.7rem; color:#64748b; margin-top:0.15rem;">Stations Requiring Review</div>
+          </div>
+          <div style="background:rgba(15,23,42,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:1rem; text-align:center;">
+            <div style="font-size:0.72rem; color:#94a3b8; font-weight:bold; letter-spacing:0.05em; text-transform:uppercase;">Max PFMEA RPN</div>
+            <div id="ai-kpi-max-rpn" style="font-size:1.6rem; font-weight:bold; color:#a78bfa; margin-top:0.25rem;">--</div>
+            <div style="font-size:0.7rem; color:#64748b; margin-top:0.15rem;">Threshold: RPN ≥ 120 (Critical)</div>
+          </div>
+        </div>
+
+        <!-- AI Intelligent Trend Synthesis Report Card -->
+        <div id="ai-synthesis-card" style="margin-bottom:1.5rem; background:rgba(15,23,42,0.75); border:1px solid rgba(56,189,248,0.25); border-radius:12px; padding:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <span style="font-size:1.15rem;">🧠</span>
+              <span style="font-weight:bold; color:#38bdf8; font-size:0.95rem;">AI Quality Engineering Diagnosis & 4M1E Synthesis</span>
+            </div>
+            <span id="ai-synthesis-engine-tag" style="font-size:0.72rem; color:#94a3b8; font-family:monospace; background:rgba(30,41,59,0.8); padding:0.2rem 0.5rem; border-radius:6px;"></span>
+          </div>
+          <div id="ai-synthesis-body" style="font-size:0.84rem; color:#cbd5e1; line-height:1.6; max-height:420px; overflow-y:auto; padding-right:0.5rem;">
+            <div style="text-align:center; padding:1.5rem; color:var(--text-muted);">
+              <span>⏳ Analyzing historical findings with AI...</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Anomaly Alert Cards Container -->
+        <div style="margin-bottom:1.5rem;">
+          <div style="font-size:0.85rem; font-weight:bold; color:#f8fafc; margin-bottom:0.75rem; display:flex; align-items:center; gap:0.4rem;">
+            <span>🚨</span> Active Anomaly & Shift Drift Warnings
+          </div>
+          <div id="container-ai-insights">
+            <!-- Dynamically injected anomaly cards -->
+          </div>
+        </div>
+
+        <!-- PFMEA Dynamic Risk Matrix Table -->
+        <div style="background:rgba(15,23,42,0.6); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:1.25rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.85rem; flex-wrap:wrap; gap:0.5rem;">
+            <div>
+              <span style="font-weight:bold; color:#f8fafc; font-size:0.95rem;">🛡️ IATF 16949 / IPC-A-610 PFMEA Linked Risk Matrix (失效模式与影响分析)</span>
+              <p style="font-size:0.75rem; color:var(--text-muted); margin-top:0.2rem;">Dynamic Occurrence (O) & RPN (S × O × D) calculated from live audit failure rates.</p>
+            </div>
+            <span id="pfmea-total-badge" style="font-size:0.75rem; color:#38bdf8; background:rgba(56,189,248,0.15); border:1px solid rgba(56,189,248,0.3); padding:0.2rem 0.6rem; border-radius:12px; font-weight:bold;">Active Stations</span>
+          </div>
+
+          <div style="overflow-x:auto;">
+            <table style="width:100%; border-collapse:collapse; font-size:0.78rem;">
+              <thead>
+                <tr style="background:rgba(30,41,59,0.8); border-bottom:1px solid var(--border-color); color:#94a3b8; text-align:left;">
+                  <th style="padding:0.6rem 0.75rem;">Station / Line</th>
+                  <th style="padding:0.6rem 0.75rem;">Process</th>
+                  <th style="padding:0.6rem 0.75rem;">Potential Failure Mode</th>
+                  <th style="padding:0.6rem 0.75rem; text-align:center;" title="Severity (1-10)">S</th>
+                  <th style="padding:0.6rem 0.75rem; text-align:center;" title="Occurrence (1-10)">O</th>
+                  <th style="padding:0.6rem 0.75rem; text-align:center;" title="Detection (1-10)">D</th>
+                  <th style="padding:0.6rem 0.75rem; text-align:center;" title="Risk Priority Number (S × O × D)">RPN</th>
+                  <th style="padding:0.6rem 0.75rem;">Risk Level</th>
+                  <th style="padding:0.6rem 0.75rem;">Recommended Action (CLCA)</th>
+                  <th style="padding:0.6rem 0.75rem; text-align:center;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="pfmea-matrix-tbody">
+                <tr><td colspan="10" style="text-align:center; padding:1.5rem; color:#64748b;">Loading PFMEA Matrix...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1190,6 +1328,65 @@
       <div style="display:flex;gap:1rem;justify-content:flex-end;">
         <button type="button" class="btn-select" onclick="cancelROIDraw()" style="padding:0.5rem 1.25rem;">Discard</button>
         <button type="button" id="btn-confirm-roi" class="btn-primary" style="padding:0.5rem 1.25rem;background:#34d399;border-color:#34d399;color:#0f172a;font-weight:bold;" onclick="confirmROICalibration()" disabled>Confirm ROI</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Model & Gateway Link Settings Modal -->
+  <div id="modal-ai-config" class="modal-overlay" style="z-index: 2500;">
+    <div class="modal-content" style="max-width: 540px; background: #0b1120; border: 1px solid rgba(56,189,248,0.3); border-radius: 14px; padding: 1.5rem; box-shadow: 0 20px 45px rgba(0,0,0,0.8);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.25rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <span style="font-size:1.3rem;">⚙️</span>
+          <h3 style="color:#f8fafc; margin:0; font-size:1.15rem;">AI API & Engine Configuration</h3>
+        </div>
+        <button type="button" class="btn-select" onclick="closeAIConfigModal()" style="padding:0.25rem 0.6rem; font-size:0.85rem;">✕</button>
+      </div>
+
+      <p style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:1.25rem;">
+        Configure generative AI models (Google Gemini API, Oracle Cloud Qwen 2.5 / Ollama, or OpenAI) to link with IPQC inspection trend analytics and IATF 16949 PFMEA matrices.
+      </p>
+
+      <div style="margin-bottom: 1rem;">
+        <label style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Active AI Provider:</label>
+        <select id="cfg-ai-provider" class="login-input" style="width:100%; margin-top:0.35rem; padding:0.55rem; background:#0f172a; border:1px solid var(--border-color); color:#fff; border-radius:8px;" onchange="handleAIProviderChange()">
+          <option value="auto">Auto Hybrid (Ollama VM / Cloud Gemini / Rule Engine)</option>
+          <option value="gemini">Google Gemini API (Cloud Serverless / Vercel Recommended)</option>
+          <option value="ollama">Oracle Cloud Master AI (Local Qwen 2.5 / Ollama)</option>
+          <option value="openai">OpenAI API (GPT-4o mini)</option>
+        </select>
+      </div>
+
+      <div id="cfg-gemini-section" style="margin-bottom: 1rem;">
+        <label style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Gemini API Key:</label>
+        <div style="display:flex; gap:0.5rem; margin-top:0.35rem;">
+          <input type="password" id="cfg-ai-gemini-key" class="login-input" style="flex:1; padding:0.55rem; background:#0f172a; border:1px solid var(--border-color); color:#38bdf8; font-family:monospace; border-radius:8px;" placeholder="AIzaSy...">
+          <button type="button" class="btn-select" onclick="toggleAIKeyVisibility('cfg-ai-gemini-key')" style="padding:0.4rem 0.65rem; font-size:0.75rem;">👁️</button>
+        </div>
+        <span style="font-size:0.7rem; color:#64748b; margin-top:0.2rem; display:block;">Key is stored locally in your browser session for secure private analysis.</span>
+      </div>
+
+      <div id="cfg-endpoint-section" style="margin-bottom: 1rem;">
+        <label style="font-size:0.8rem; color:#94a3b8; font-weight:600;">AI Gateway Endpoint URL:</label>
+        <input type="text" id="cfg-ai-endpoint" class="login-input" style="width:100%; margin-top:0.35rem; padding:0.55rem; background:#0f172a; border:1px solid var(--border-color); color:#fff; font-family:monospace; font-size:0.8rem; border-radius:8px;" value="http://192.9.135.138:8000/v1">
+      </div>
+
+      <div style="margin-bottom: 1.25rem;">
+        <label style="font-size:0.8rem; color:#94a3b8; font-weight:600;">Model Selection:</label>
+        <input type="text" id="cfg-ai-model" class="login-input" style="width:100%; margin-top:0.35rem; padding:0.55rem; background:#0f172a; border:1px solid var(--border-color); color:#fff; font-family:monospace; font-size:0.8rem; border-radius:8px;" placeholder="e.g. qwen2.5:0.5b or gemini-1.5-flash">
+      </div>
+
+      <!-- Test Connection Feedback Banner -->
+      <div id="cfg-ai-test-result" style="display:none; padding:0.65rem 0.85rem; border-radius:8px; font-size:0.78rem; margin-bottom:1.25rem;"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:0.75rem; border-top:1px solid rgba(255,255,255,0.08); padding-top:1rem;">
+        <button type="button" id="btn-test-ai-conn" class="btn-select" onclick="testAIConnection()" style="padding:0.5rem 0.9rem; font-size:0.8rem; color:#38bdf8; border-color:rgba(56,189,248,0.4); display:flex; align-items:center; gap:0.4rem;">
+          <span>🔌</span> Test Connection
+        </button>
+        <div style="display:flex; gap:0.5rem;">
+          <button type="button" class="btn-select" onclick="closeAIConfigModal()" style="padding:0.5rem 0.9rem; font-size:0.8rem;">Cancel</button>
+          <button type="button" class="btn-primary" onclick="saveAIConfigAndRun()" style="padding:0.5rem 1.15rem; font-size:0.8rem; font-weight:bold;">Save & Link API</button>
+        </div>
       </div>
     </div>
   </div>
