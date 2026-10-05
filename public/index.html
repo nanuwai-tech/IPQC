@@ -731,7 +731,7 @@
                 <thead>
                   <tr style="border-bottom: 2px solid var(--border-color); color: var(--text-muted);">
                     <th style="padding: 0.6rem 0.75rem;">Rank</th>
-                    <th style="padding: 0.6rem 0.75rem;">工序名称 (Process Name)</th>
+                    <th style="padding: 0.6rem 0.75rem;">工序名称 (Process Name) <span style="font-size: 0.7rem; color: #38bdf8; font-weight: normal; margin-left: 4px;">(👆 点击查看 Top 5 问题与对策)</span></th>
                     <th style="padding: 0.6rem 0.75rem; text-align: center;">缺陷发生数 (Defects)</th>
                     <th style="padding: 0.6rem 0.75rem; text-align: right;">工序占比 (Share %)</th>
                     <th style="padding: 0.6rem 0.75rem; text-align: right;">累计百分比 (Cumulative %)</th>
@@ -742,6 +742,62 @@
                   <tr><td colspan="6" style="text-align: center; padding: 1.5rem; color: var(--text-muted);">正在分析工序数据...</td></tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Process Top 5 Problems Deep-Dive Analysis (Interactive Drill-down) -->
+          <div id="pareto-top5-container" style="display: none; margin-top: 1.5rem; background: rgba(15,23,42,0.75); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 1.35rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span id="pareto-top5-icon" style="font-size: 1.4rem;">🌊</span>
+                <div>
+                  <div style="font-size: 1.05rem; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 0.5rem;">
+                    <span id="pareto-top5-title" style="color: #38bdf8;">DIP-Wave</span>
+                    <span style="font-size: 0.82rem; color: #fbbf24; font-weight: 700;">— Top 5 问题根本原因与改善对策 (Top 5 Problems Analysis)</span>
+                  </div>
+                  <div id="pareto-top5-subtitle" style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                    点击工序即可钻取该制程最高频发生的 5 大品质异常、4M1E 可能根本原因 (Root-cause) 及标准改善对策 (Recommend Actions)。
+                  </div>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <span id="pareto-top5-stat-badge" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 3px 10px; border-radius: 6px; font-size: 0.76rem; font-weight: 700;">
+                  254 Total Defects
+                </span>
+                <button type="button" class="btn-select" onclick="closeParetoTop5()" style="padding: 0.3rem 0.65rem; font-size: 0.75rem; border-color: rgba(255,255,255,0.2);">
+                  ✖ 关闭 (Close)
+                </button>
+              </div>
+            </div>
+
+            <!-- Top 5 Problems Table -->
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.84rem;">
+                <thead>
+                  <tr style="border-bottom: 2px solid rgba(56, 189, 248, 0.25); color: #94a3b8; font-size: 0.78rem; text-transform: uppercase;">
+                    <th style="padding: 0.6rem 0.6rem; width: 45px; text-align: center;">#</th>
+                    <th style="padding: 0.6rem 0.75rem; width: 24%;">高发缺陷与检查项 (Top Issue Finding)</th>
+                    <th style="padding: 0.6rem 0.6rem; width: 85px; text-align: center;">频次 (Count)</th>
+                    <th style="padding: 0.6rem 0.6rem; width: 80px; text-align: right;">工序内占比</th>
+                    <th style="padding: 0.6rem 0.85rem; width: 33%;">🔍 可能根本原因 (Possible Root-Cause)</th>
+                    <th style="padding: 0.6rem 0.85rem; width: 33%;">🛠️ 建议改善对策 (Recommend Actions)</th>
+                  </tr>
+                </thead>
+                <tbody id="pareto-top5-tbody">
+                  <!-- Populated dynamically via selectParetoProcess(procName) -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Engineering PFMEA Guidance Footer -->
+            <div id="pareto-top5-pfmea-box" style="margin-top: 1rem; padding: 0.75rem 1rem; background: rgba(30, 41, 59, 0.5); border-left: 3px solid #38bdf8; border-radius: 6px; font-size: 0.78rem; color: #cbd5e1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <strong style="color: #38bdf8;">💡 制程工程 PFMEA 预防提示:</strong> 
+                <span id="pareto-top5-pfmea-text">根据 IATF 16949 / IPC-A-610 制造规范，请工序制程主管对 Top 1 高发问题落实首件确认 (First Article) 与防错 (Poka-Yoke)。</span>
+              </div>
+              <button type="button" class="btn-select" onclick="switchNav('capa')" style="padding: 0.25rem 0.65rem; font-size: 0.73rem; color: #38bdf8; border-color: rgba(56,189,248,0.3);">
+                ⚡ 打开 CAPA 看板闭环跟踪
+              </button>
             </div>
           </div>
         </div>
@@ -1683,7 +1739,7 @@
   <!-- JS App Entrypoint -->
   <script src="js/translations.js?v=99"></script>
   <script src="js/checklist_data.js?v=107"></script>
-  <script src="js/app.js?v=108"></script>
+  <script src="js/app.js?v=109"></script>
 
   <script>
     // Inline quickLogin fallback for PWA cache mismatch safety

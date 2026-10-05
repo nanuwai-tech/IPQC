@@ -11,6 +11,8 @@ let auditTimerInterval = null;
 let auditStartTime = null;
 let paretoChartInstance = null;
 let currentParetoPeriod = 'weekly';
+let cachedAnalyticsData = null;
+let selectedParetoProcess = null;
 let html5QrScanner = null;
 
 let selectedLayoutMode = 'option3'; // 'option3' (Shopfloor Bay Matrix - Primary Home), 'option1' (Linear Conveyor), 'canvas' (2D Free Canvas)
@@ -2724,6 +2726,8 @@ async function renderParetoChart() {
     console.warn("Could not load Analytics for Pareto:", e);
   }
 
+  cachedAnalyticsData = analytics;
+
   const elAudits = document.getElementById('stat-total-audits');
   const elComp = document.getElementById('stat-compliance-rate');
   const elAnom = document.getElementById('stat-open-anomalies');
@@ -2759,6 +2763,7 @@ async function renderParetoChart() {
     const tbody = document.getElementById('pareto-process-tbody');
     if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem; color: #34d399; font-weight: bold;">🎉 当前时段全厂查核合格，无工序缺陷记录</td></tr>';
     if (elTopProc) elTopProc.textContent = 'None (0 Defects)';
+    closeParetoTop5();
     return;
   }
 
@@ -2805,17 +2810,30 @@ async function renderParetoChart() {
         ? `<span style="background: ${idx === 0 ? '#eab308' : (idx === 1 ? '#94a3b8' : '#cd7f32')}; color: #000; font-weight: 800; padding: 2px 7px; border-radius: 50%; font-size: 0.75rem;">${idx + 1}</span>`
         : `<span style="color: var(--text-muted); font-family: monospace; font-weight: bold; padding-left: 5px;">#${idx + 1}</span>`;
 
+      const isSelected = selectedParetoProcess && selectedParetoProcess.toLowerCase() === procName.toLowerCase();
+      const rowBg = isSelected ? 'rgba(56, 189, 248, 0.18)' : (isVital ? 'rgba(239, 68, 68, 0.04)' : 'transparent');
+      const rowBorder = isSelected ? 'border-left: 4px solid #38bdf8;' : '';
+
       return `
-        <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.3); background: ${isVital ? 'rgba(239, 68, 68, 0.04)' : 'transparent'};">
-          <td style="padding: 0.65rem 0.75rem;">${rankBadge}</td>
-          <td style="padding: 0.65rem 0.75rem; font-weight: 700; color: #fff;">
-            <span style="margin-right: 0.4rem;">${icon}</span>
-            <span style="color: #38bdf8;">${procName}</span>
+        <tr id="pareto-row-${idx}" onclick="selectParetoProcess('${procName.replace(/'/g, "\\'")}')" 
+            style="border-bottom: 1px solid rgba(51, 65, 85, 0.3); background: ${rowBg}; ${rowBorder} cursor: pointer; transition: all 0.2s;"
+            onmouseover="this.style.background='rgba(56, 189, 248, 0.12)'" 
+            onmouseout="this.style.background='${rowBg}'"
+            title="点击查看 ${procName} 的 Top 5 问题明细、根本原因与改善对策">
+          <td style="padding: 0.75rem 0.75rem;">${rankBadge}</td>
+          <td style="padding: 0.75rem 0.75rem; font-weight: 700; color: #fff;">
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+              <div style="display: flex; align-items: center; gap: 0.4rem;">
+                <span style="font-size: 1.15rem;">${icon}</span>
+                <span style="color: #38bdf8; text-decoration: underline; text-underline-offset: 3px;">${procName}</span>
+              </div>
+              <span style="font-size: 0.7rem; color: #94a3b8; background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);">🔍 Top 5</span>
+            </div>
           </td>
-          <td style="padding: 0.65rem 0.75rem; text-align: center; font-family: monospace; font-weight: 800; color: #ef4444; font-size: 0.95rem;">${count}</td>
-          <td style="padding: 0.65rem 0.75rem; text-align: right; font-weight: 700; color: #fbbf24;">${sharePct}%</td>
-          <td style="padding: 0.65rem 0.75rem; text-align: right; font-weight: 800; color: ${cumPct <= 80 ? '#f87171' : '#34d399'};">${cumPct}%</td>
-          <td style="padding: 0.65rem 0.75rem; text-align: center;">${priorityBadge}</td>
+          <td style="padding: 0.75rem 0.75rem; text-align: center; font-family: monospace; font-weight: 800; color: #ef4444; font-size: 0.95rem;">${count}</td>
+          <td style="padding: 0.75rem 0.75rem; text-align: right; font-weight: 700; color: #fbbf24;">${sharePct}%</td>
+          <td style="padding: 0.75rem 0.75rem; text-align: right; font-weight: 800; color: ${cumPct <= 80 ? '#f87171' : '#34d399'};">${cumPct}%</td>
+          <td style="padding: 0.75rem 0.75rem; text-align: center;">${priorityBadge}</td>
         </tr>
       `;
     }).join('');
@@ -2857,6 +2875,15 @@ async function renderParetoChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      onClick: (e, elements) => {
+        if (elements && elements.length > 0) {
+          const clickedIdx = elements[0].index;
+          const clickedProc = labels[clickedIdx];
+          if (clickedProc) {
+            selectParetoProcess(clickedProc);
+          }
+        }
+      },
       interaction: {
         mode: 'index',
         intersect: false
@@ -2880,7 +2907,7 @@ async function renderParetoChart() {
               if (context.dataset.yAxisID === 'y1') {
                 return ` 累计百分比: ${context.parsed.y}%`;
               }
-              return ` 缺陷异常数: ${context.parsed.y} 件`;
+              return ` 缺陷异常数: ${context.parsed.y} 件 (点击查看 Top 5 对策)`;
             }
           }
         }
@@ -2912,6 +2939,334 @@ async function renderParetoChart() {
       }
     }
   });
+
+  // Automatically show Top 5 problems for the #1 Process by default if available
+  if (topDefects.length > 0) {
+    const defaultProc = selectedParetoProcess || topDefects[0].process_name;
+    selectParetoProcess(defaultProc, false);
+  } else {
+    closeParetoTop5();
+  }
+}
+
+// TOP 5 PROBLEMS DEEP-DIVE ANALYSIS FOR SELECTED PROCESS
+function selectParetoProcess(procName, scrollIntoView = true) {
+  if (!procName) return;
+  selectedParetoProcess = procName;
+
+  const container = document.getElementById('pareto-top5-container');
+  if (!container) return;
+
+  const iconEl = document.getElementById('pareto-top5-icon');
+  const titleEl = document.getElementById('pareto-top5-title');
+  const badgeEl = document.getElementById('pareto-top5-stat-badge');
+  const tbodyEl = document.getElementById('pareto-top5-tbody');
+  const pfmeaTextEl = document.getElementById('pareto-top5-pfmea-text');
+
+  const icon = getProcessIcon(procName);
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = procName;
+
+  // Retrieve CAPAs for this process
+  const allCapas = (cachedAnalyticsData && cachedAnalyticsData.capas) ? cachedAnalyticsData.capas : [];
+  const procCapas = allCapas.filter(c => {
+    const p = getProcessNameFromCode(c.station_code);
+    return (p || '').toLowerCase() === procName.toLowerCase();
+  });
+
+  const totalProcDefects = procCapas.length;
+  if (badgeEl) {
+    badgeEl.textContent = `${totalProcDefects} 件缺陷 (${currentParetoPeriod.toUpperCase()})`;
+  }
+
+  // Aggregate issues by finding description
+  const issueCounts = {};
+  const issueExamples = {};
+
+  procCapas.forEach(c => {
+    let desc = (c.defect_description || '').trim();
+    if (!desc || desc.toUpperCase() === 'NG') {
+      if (c.item_no) {
+        desc = `Checklist Item #${c.item_no} Audit Non-Conformance (NG)`;
+      } else {
+        desc = `General ${procName} Station Non-Conformance (NG)`;
+      }
+    }
+    // Normalize common patterns
+    let key = desc;
+    const lower = desc.toLowerCase();
+    if (lower.includes('profile')) key = 'Thermal Profile Parameter Out of Control / Unverified (温度曲线超标/未测/未更新)';
+    else if (lower.includes('sop') || lower.includes('work instruction')) key = 'SOP / Document Missing or Non-Compliant (SOP缺失/未更新/未依作业指导书)';
+    else if (lower.includes('esd') || lower.includes('wrist') || lower.includes('ground')) key = 'ESD Grounding / Wrist Strap Resistance Fail (静电接地/手环阻抗超标)';
+    else if (lower.includes('bom') || lower.includes('version')) key = 'Program / BOM / Recipe Version Mismatch (程序或BOM版本不一致)';
+    else if (lower.includes('bridge') || lower.includes('short')) key = 'Solder Bridging / Solder Spike Short (焊点短路/桥连/锡尖)';
+    else if (lower.includes('missing') || lower.includes('drop') || lower.includes('part')) key = 'Missing Component / Part Placement Error (缺件/掉件/极性反)';
+    else if (lower.includes('void')) key = 'Excessive Solder Joint Voiding (焊点气孔/空洞超标)';
+
+    issueCounts[key] = (issueCounts[key] || 0) + 1;
+    if (!issueExamples[key]) {
+      issueExamples[key] = {
+        item_no: c.item_no,
+        station_code: c.station_code,
+        line_name: c.line_name,
+        raw_desc: c.defect_description
+      };
+    }
+  });
+
+  const sortedIssues = Object.entries(issueCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  // Fallback defaults from Standard Engineering PFMEA Knowledge Base if fewer than 5 recorded issues
+  const fallbackRules = getProcessStandardTop5(procName);
+  const finalTop5 = [];
+
+  sortedIssues.forEach(([issueTitle, count]) => {
+    const share = totalProcDefects > 0 ? Number(((count / totalProcDefects) * 100).toFixed(1)) : 0;
+    const rule = getIssueRootCauseAndAction(procName, issueTitle, issueExamples[issueTitle]);
+    finalTop5.push({
+      title: issueTitle,
+      count: count,
+      share: share,
+      root_cause: rule.root_cause,
+      recommend_action: rule.recommend_action,
+      severity: rule.severity || 'HIGH',
+      isActual: true
+    });
+  });
+
+  // Pad to Top 5 if needed
+  if (finalTop5.length < 5) {
+    fallbackRules.forEach(fb => {
+      if (finalTop5.length < 5 && !finalTop5.some(it => it.title.toLowerCase().includes(fb.keyword.toLowerCase()))) {
+        finalTop5.push({
+          title: fb.title,
+          count: 0,
+          share: 0,
+          root_cause: fb.root_cause,
+          recommend_action: fb.recommend_action,
+          severity: fb.severity || 'MEDIUM',
+          isActual: false
+        });
+      }
+    });
+  }
+
+  // Render Top 5 Table
+  if (tbodyEl) {
+    if (finalTop5.length === 0) {
+      tbodyEl.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 2rem; color: #34d399; font-weight: bold;">🎉 该工序在当前时段无缺陷记录，所有检查项均受控</td></tr>`;
+    } else {
+      tbodyEl.innerHTML = finalTop5.map((pItem, pIdx) => {
+        const rankColor = pIdx === 0 ? '#ef4444' : (pIdx === 1 ? '#f59e0b' : (pIdx === 2 ? '#eab308' : '#94a3b8'));
+        const countDisplay = pItem.isActual 
+          ? `<span style="color: #ef4444; font-weight: 800; font-family: monospace; font-size: 0.95rem;">${pItem.count}</span>` 
+          : `<span style="color: #64748b; font-size: 0.76rem;">0 (预防项)</span>`;
+        const shareDisplay = pItem.isActual ? `<span style="color: #fbbf24; font-weight: 700;">${pItem.share}%</span>` : `<span style="color: #64748b;">0%</span>`;
+
+        return `
+          <tr style="border-bottom: 1px solid rgba(51, 65, 85, 0.4); background: ${pIdx % 2 === 0 ? 'rgba(30, 41, 59, 0.3)' : 'transparent'}; vertical-align: top;">
+            <td style="padding: 0.75rem 0.6rem; text-align: center;">
+              <span style="display: inline-block; width: 22px; height: 22px; line-height: 22px; border-radius: 50%; background: ${rankColor}; color: #000; font-weight: 800; font-size: 0.75rem;">
+                ${pIdx + 1}
+              </span>
+            </td>
+            <td style="padding: 0.75rem 0.75rem;">
+              <div style="font-weight: 700; color: #fff; line-height: 1.35; margin-bottom: 3px;">
+                ${pItem.title}
+              </div>
+              ${pItem.isActual ? `<span style="font-size: 0.7rem; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 1px 6px; border-radius: 4px;">🎯 实测高发异常</span>` : `<span style="font-size: 0.7rem; color: #94a3b8; background: rgba(148,163,184,0.1); padding: 1px 6px; border-radius: 4px;">🛡️ IATF 关键预防项</span>`}
+            </td>
+            <td style="padding: 0.75rem 0.6rem; text-align: center;">${countDisplay}</td>
+            <td style="padding: 0.75rem 0.6rem; text-align: right;">${shareDisplay}</td>
+            <td style="padding: 0.75rem 0.85rem; color: #e2e8f0; font-size: 0.8rem; line-height: 1.45;">
+              <div style="background: rgba(239, 68, 68, 0.06); border-left: 2px solid #ef4444; padding: 6px 8px; border-radius: 0 4px 4px 0;">
+                <strong style="color: #f87171;">4M1E 归因:</strong> ${pItem.root_cause}
+              </div>
+            </td>
+            <td style="padding: 0.75rem 0.85rem; color: #e2e8f0; font-size: 0.8rem; line-height: 1.45;">
+              <div style="background: rgba(52, 211, 153, 0.06); border-left: 2px solid #34d399; padding: 6px 8px; border-radius: 0 4px 4px 0;">
+                <strong style="color: #34d399;">CLCA 措施:</strong> ${pItem.recommend_action}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+  }
+
+  // Update PFMEA Guidance message
+  if (pfmeaTextEl) {
+    const pfmeaObj = getProcessPFMEAGuidance(procName);
+    pfmeaTextEl.innerHTML = pfmeaObj;
+  }
+
+  container.style.display = 'block';
+
+  if (scrollIntoView) {
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+function closeParetoTop5() {
+  const container = document.getElementById('pareto-top5-container');
+  if (container) container.style.display = 'none';
+  selectedParetoProcess = null;
+}
+
+// 4M1E & PFMEA ROOT CAUSE + RECOMMEND ACTIONS RESOLUTION ENGINE
+function getIssueRootCauseAndAction(procName, issueTitle, example) {
+  const title = (issueTitle || '').toLowerCase();
+  const p = (procName || '').toLowerCase();
+
+  if (title.includes('profile')) {
+    return {
+      root_cause: "炉温温区热电偶老化飘移；换线或停机后未重新跑温控板验证；网带传输速度波动；氮气流量不足导致液相线以上时间 (TAL) 超标。",
+      recommend_action: "立即进行 KIC 测温板实测验证；核对换线机种与当前 Profile 编号一致性；重新校准各温区设定并由制程工程师 (PE) 签字放行。",
+      severity: "HIGH"
+    };
+  }
+  if (title.includes('sop') || title.includes('document')) {
+    return {
+      root_cause: "ECN工程变更未同步推送至产线站位；作业员未及时取下旧版指导书；产线转拉未核对工艺参数表。",
+      recommend_action: "稽核所有站位最新受控印章 SOP；执行电子看板 (E-SOP) 扫码联动锁机；对当班领班与作业员实施变更点点检再培训。",
+      severity: "MEDIUM"
+    };
+  }
+  if (title.includes('esd') || title.includes('wrist') || title.includes('ground')) {
+    return {
+      root_cause: "静电手环接触松脱或电阻值老化 (>10^7 Ω)；工作台与静电椅接地线脱落；离子风机针头氧化积碳导致离子平衡度失调。",
+      recommend_action: "强制启用静电手环在线连续监控报警仪；每班开工前检测离子风机残余电压 (<±35V)；定期紧固各工作台接地端子排 (接地电阻 <1.0 Ω)。",
+      severity: "HIGH"
+    };
+  }
+  if (title.includes('bom') || title.includes('version')) {
+    return {
+      root_cause: "设备端调用了历史离线工程程式；MES/SFC 系统料站表与现场实际生产工单料号不匹配；换线程序导入未执行首件比对。",
+      recommend_action: "设备端全面启用 MES 扫码防错联动；更新机台 Program 并比对 Checksum 校验码；执行首件全检 (FAI) 并锁定配方参数。",
+      severity: "CRITICAL"
+    };
+  }
+  if (title.includes('bridge') || title.includes('short')) {
+    return {
+      root_cause: "钢网开孔堵孔或擦网周期过长；锡膏印刷厚度超标 (>150μm)；波峰焊浸锡高度过深或链速过慢；助焊剂喷涂比重不均。",
+      recommend_action: "增加钢网自动擦拭频次 (每3-5板一次)；优化波峰焊浸锡时间与脱锡倾斜角度 (4°-6°)；检测助焊剂固含量与比重。",
+      severity: "HIGH"
+    };
+  }
+  if (title.includes('missing') || title.includes('drop') || title.includes('part')) {
+    return {
+      root_cause: "贴片机吸嘴真空压力不足或堵塞；飞达 (Feeder) 步进齿轮磨损卡带；插件工序作业员漏插或极性方向反向。",
+      recommend_action: "清洗贴片吸嘴并保养真空过滤阀；校准飞达取料坐标；插件站位设立极性限位治具与首件彩色样品限度样板。",
+      severity: "CRITICAL"
+    };
+  }
+  if (title.includes('void')) {
+    return {
+      root_cause: "回流焊预热区升温斜率过快导致助焊剂溶剂未完全挥发；锡膏氧化或吸湿 (暴露空气 >24h)；PCB 焊盘受潮未烘烤。",
+      recommend_action: "优化预热升温斜率 (1.5-2.0°C/s)；控制锡膏回温与开封时间；对高层板或易吸湿 PCB 实施 120°C/2h 预烘烤。",
+      severity: "HIGH"
+    };
+  }
+
+  // Fallback by manufacturing process
+  if (p.includes('wave')) {
+    return {
+      root_cause: "波峰焊锡锅温度偏离工艺窗口 (255-265°C)；锡渣过多堵塞喷嘴钛爪；预热底部温度不足 (<100°C)；链速不稳定。",
+      recommend_action: "清理锡炉表面氧化锡渣与喷嘴结晶；测量预热区实际板底温度；定期化验锡炉铜污染 (Cu < 0.3%) 并补充纯锡条。",
+      severity: "HIGH"
+    };
+  }
+  if (p.includes('printer') || p.includes('print')) {
+    return {
+      root_cause: "刮刀压力偏大或偏小 (标准 1.5-2.5 kg)；脱模速度过快拉尖；锡膏粘度异常 (温度 <22°C 或 >26°C)。",
+      recommend_action: "校准刮刀水平与压力设定；设置脱模速度至 0.3-0.8 mm/s；每 2 小时搅拌并检测锡膏罐温湿度记录。",
+      severity: "HIGH"
+    };
+  }
+  if (p.includes('reflow')) {
+    return {
+      root_cause: "加热区发热管老化或热电偶受风机气流干扰；氮气浓度低于 99.9% 导致焊盘氧化；排风管道风压波动。",
+      recommend_action: "测温板定期 9 点测试并计算 CPK；清洗回流炉助焊剂回收管道；检查氮气供给主管路压力 (>0.5 MPa)。",
+      severity: "HIGH"
+    };
+  }
+  if (p.includes('aoi') || p.includes('spi')) {
+    return {
+      root_cause: "光学镜头表面灰尘或光源 LED 亮度衰减；算法阈值设定过宽导致漏报；板弯翘曲引起焦点模糊。",
+      recommend_action: "使用标准校准块清洁并标定光学镜头；调整算法容差范围；检查输送导轨压板与平整度治具。",
+      severity: "MEDIUM"
+    };
+  }
+
+  return {
+    root_cause: "作业员未严格按照制程 SOP 执行查核；机台参数日常巡检记录未同步；治具磨损或传感器灵敏度衰减。",
+    recommend_action: "立即对该站位开展 5S 与工序标准化复查；落实班次交接核对表；由品质主管跟进整改并记录 CAPA 闭环。",
+    severity: "MEDIUM"
+  };
+}
+
+function getProcessStandardTop5(procName) {
+  const p = (procName || '').toLowerCase();
+  if (p.includes('wave')) {
+    return [
+      { keyword: 'profile', title: '波峰焊温控曲线未依频次量测或超标 (Profile Out of Spec)', root_cause: '热电偶老化或换线未测温，预热温度不足', recommend_action: '开线前强制跑温控曲线，PE 审核签字后方可投入生产', severity: 'HIGH' },
+      { keyword: 'flux', title: '助焊剂喷涂量/比重异常 (Flux SG Drift)', root_cause: '比重计未校准，喷嘴堵塞，溶剂挥发', recommend_action: '每班测试比重并记录，定期超声波清洗喷嘴', severity: 'HIGH' },
+      { keyword: 'bridge', title: '引脚短路与连锡 (Pin Bridging / Shorts)', root_cause: '锡锅铜含量超标，浸锡时间过长，脱锡角度不良', recommend_action: '优化轨道倾斜角度 (4°-6°)，化验锡锅成分并捞渣', severity: 'HIGH' },
+      { keyword: 'fill', title: '通孔透锡率不足 <75% (Poor Hole Fill)', root_cause: '元器件引脚氧化，预热不足导致助焊剂提前失效', recommend_action: '检查物料可焊性，提高预热温度 5-10°C 促进透锡', severity: 'HIGH' },
+      { keyword: 'dross', title: '锡渣堆积与锡尖 (Dross Accumulation & Spikes)', root_cause: '防氧化油未加，锡锅波峰液位过高', recommend_action: '加装还原粉，每4小时彻底清理波峰槽四周锡渣', severity: 'MEDIUM' }
+    ];
+  }
+  if (p.includes('reflow')) {
+    return [
+      { keyword: 'profile', title: '回流焊温度曲线未更新/漂移 (Reflow Profile Non-compliance)', root_cause: '各温区发热管老化，未依换线要求调用新版 Profile', recommend_action: '使用 KIC 重新测试全温区 Profile 并锁定配方', severity: 'HIGH' },
+      { keyword: 'n2', title: '氮气流量与含氧量超标 (N2 Flow / PPM Out of Spec)', root_cause: '气源总压不足，炉膛进出口密封帘磨损漏气', recommend_action: '检查氮气源压力 (>0.5MPa)，更换防风帘与过滤器', severity: 'HIGH' },
+      { keyword: 'void', title: 'BGA/QFN 焊点空洞率超标 (Void Ratio > 25%)', root_cause: '升温速率过快，锡膏溶剂挥发不充分，焊盘受潮', recommend_action: '调整升温斜率，确保预热区保持 60-90 秒', severity: 'HIGH' },
+      { keyword: 'tombstone', title: '片式元件立碑与偏位 (Tombstoning / Shift)', root_cause: '两端焊盘受热不均，印刷锡膏量两端不平衡', recommend_action: '校准印刷平整度，优化均热温区热风对流平衡', severity: 'HIGH' },
+      { keyword: 'board', title: 'PCB 板面起泡或变色 (PCB Delamination / Blistering)', root_cause: '最高峰值温度过高 (>255°C) 或受潮板材未烘烤', recommend_action: '严格核算峰值温区停留时间，受潮板材 125°C/4h 烘烤', severity: 'CRITICAL' }
+    ];
+  }
+  if (p.includes('printer') || p.includes('print')) {
+    return [
+      { keyword: 'sop', title: '印刷机 SOP 与参数表不符 (SOP Parameter Mismatch)', root_cause: '技术员调机后未依最新参数表复核，变更未受控', recommend_action: '刮刀压力、速度参数由工艺工程师权限密码锁定', severity: 'HIGH' },
+      { keyword: 'wipe', title: '钢网未依频次清洗堵孔 (Stencil Clogging / Insufficient Wipe)', root_cause: '擦网溶剂用尽或真空吸力不足，自动清洗频次过低', recommend_action: '设定每 3 板自动清洗一次 (真空+溶剂)，每 2 小时人工擦网', severity: 'HIGH' },
+      { keyword: 'paste', title: '锡膏开封超时或回温不足 (Paste Pot-life / Temp Expired)', root_cause: '作业员未按先进先出领料，未满 4 小时回温即开封使用', recommend_action: '启用锡膏全流程条码追溯柜，未回温完成禁止出柜', severity: 'CRITICAL' },
+      { keyword: 'align', title: '印刷对位偏移 >25% (Stencil Printing Misalignment)', root_cause: 'PCB Mark 点脏污或反光，支撑顶针松动翘曲', recommend_action: '校准双目 Mark 点识别系统，重新排布密集磁性顶针', severity: 'HIGH' },
+      { keyword: 'height', title: '锡膏厚度/体积超出 ±20% (Paste Volume / Thickness Drift)', root_cause: '刮刀刀片磨损变形，两端压力不均', recommend_action: '定期检查刮刀平直度并使用 SPI 联动自动补正', severity: 'HIGH' }
+    ];
+  }
+  if (p.includes('esd') || p.includes('quality')) {
+    return [
+      { keyword: 'wrist', title: '静电手环接地阻抗超标 (ESD Wrist Strap Resistance NG)', root_cause: '手环金属片氧化，连接线拉伸断线，手腕过干', recommend_action: '安装台面常驻式静电监控仪，声光实时报警', severity: 'HIGH' },
+      { keyword: 'ground', title: '工作台/静电椅/料架未接地 (Grounding Cord Disconnected)', root_cause: '拖地时撞脱接地扣，接地链磨损悬空', recommend_action: '每周巡检接地排阻抗 (<1.0Ω)，加装防撞保护罩', severity: 'HIGH' },
+      { keyword: 'ionizer', title: '离子风机去静电失效 (Ionizer Balance NG)', root_cause: '放电针积聚灰尘，风速未达到要求', recommend_action: '每周用专用刷清洗放电针，每季标定离子平衡度', severity: 'MEDIUM' },
+      { keyword: 'box', title: 'ESD 导电胶箱破损/阻抗超标 (ESD Tote Box Defective)', root_cause: '导电材质老化衰退，现场混用非防静电普通塑料盒', recommend_action: '淘汰不合格旧箱，严禁普通塑料制品进入生产区', severity: 'MEDIUM' },
+      { keyword: 'wear', title: '作业员防静电衣帽鞋穿戴不规范 (ESD Garment Non-compliance)', root_cause: '作业员头发外露，防静电鞋鞋底积尘', recommend_action: '班前风淋门强化着装检查，设置鞋底除尘垫', severity: 'MEDIUM' }
+    ];
+  }
+  return [
+    { keyword: 'sop', title: '作业指导书 (SOP) 不一致或未签审', root_cause: '文档更新不及时，现场版本失控', recommend_action: '全面复核站位文件，落实工程受控印章', severity: 'HIGH' },
+    { keyword: 'machine', title: '设备点检表漏签或参数飘移', root_cause: '当班点检漏项，传感器零点漂移', recommend_action: '机台开机前必须完成点检方可生产', severity: 'HIGH' },
+    { keyword: 'tool', title: '工装治具磨损或未校准', root_cause: '治具超过保养寿命周期仍在使用', recommend_action: '建立治具寿命寿命计数管理，超期报废或翻新', severity: 'MEDIUM' },
+    { keyword: 'training', title: '作业员操作手法不合规', root_cause: '新员工上岗培训不充分，未获上岗证', recommend_action: '重新进行 SOP 实操考核与资质认证', severity: 'MEDIUM' },
+    { keyword: 'first', title: '首件制作与确认不严格 (FAI Skip)', root_cause: '为了抢产量而提前批量过板', recommend_action: '严禁首件合格前批量投入，违者停线通报', severity: 'CRITICAL' }
+  ];
+}
+
+function getProcessPFMEAGuidance(procName) {
+  const p = (procName || '').toLowerCase();
+  if (p.includes('wave')) {
+    return `<strong>🌊 DIP-Wave 波峰焊控制关键:</strong> 重点监控波峰温度稳定性与焊点透锡率 (Hole-fill ≥ 75%)。温度曲线 (Profile) 必须每班次或换线前完成测试验证，防止冷焊与桥连！`;
+  }
+  if (p.includes('reflow')) {
+    return `<strong>♨️ SMT-Reflow 回流焊控制关键:</strong> 严格维持 TAL (Time Above Liquidus 45-75s) 与氮气氧浓度 (<1000 ppm)。杜绝未经 Profile 签字认证擅自投产！`;
+  }
+  if (p.includes('printer')) {
+    return `<strong>📑 SMT-Printer 印刷控制关键:</strong> 锡膏印刷贡献 SMT 70% 缺陷。必须严格管制锡膏回温开封时限 (<24h) 与钢网定时清洗防堵孔！`;
+  }
+  if (p.includes('esd') || p.includes('quality')) {
+    return `<strong>⚡ ESD 静电控制关键:</strong> 敏感元件静电耐压极限 < 100V。请确保工作台接地链与离子风机 balance 控制在 ±35V 以内！`;
+  }
+  return `<strong>⚙️ ${procName} 制程控制关键:</strong> 严格遵守 IATF 16949 / IPC-A-610 标准，对高发异常落实根本原因 4M1E 鱼骨图分析与预防防错对策！`;
 }
 
 // QR STICKERS GENERATOR FOR FACTORY FLOOR
