@@ -5,6 +5,7 @@ import os
 files_to_update = [
     'public/index.html',
     'public/js/app.js',
+    'public/js/checklist_data.js',
     'public/js/fai_app.js',
     'FAI/public/fai_index.html',
     'FAI/public/js/fai_app.js',

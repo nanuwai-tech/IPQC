@@ -837,6 +837,30 @@ async function renderFactoryMap() {
   }
 }
 
+// Robust Standard Doc & Revision Resolver (DIP -> 5Q4-053 V6, SMT -> 5Q4-046 V8)
+function getStationStandardDoc(st) {
+  if (!st) return '5Q4-046';
+  const code = (st.station_code || st.code || st.id || '').toUpperCase();
+  const line = (st.line_name || st.line || '').toUpperCase();
+  const type = (st.line_type || '').toUpperCase();
+  const proc = (st.process_type || st.tag || st.process || '').toUpperCase();
+
+  if (type === 'DIP' || code.startsWith('DIP') || line.includes('DIP') || proc.startsWith('DIP')) {
+    return '5Q4-053';
+  }
+  if (type === 'SMT' || code.startsWith('SMT') || line.includes('SMT') || proc.startsWith('SMT')) {
+    return '5Q4-046';
+  }
+  return st.standard_doc || (code.includes('SMT') ? '5Q4-046' : '5Q4-053');
+}
+
+function getStationStandardRev(std) {
+  if (std === '5Q4-046') return 'V8';
+  if (std === '5Q4-053') return 'V6';
+  if (std === '5Q4-045') return 'V5';
+  return 'V1';
+}
+
 // Process Tag Mapping Table (Strictly maps each equipment node to its dedicated checklist items)
 const PROCESS_TAG_MAP = {
   'ESD': ['ESD'],
@@ -947,8 +971,8 @@ function renderOption1LinearFlow(allStations, container) {
         <div>
           <div style="display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
             <span style="font-size:1.15rem; font-weight:800; color:#fff;">🏭 ${activeLine}</span>
-            <span style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.4); padding:0.2rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:bold;">
-              ${lineStations[0]?.standard_doc || '5Q4-046'} (${lineStations[0]?.standard_doc === '5Q4-046' ? 'V8' : 'V6'})
+            <span style="background:${getStationStandardDoc(lineStations[0]) === '5Q4-046' ? 'rgba(56,189,248,0.15)' : 'rgba(245,158,11,0.15)'}; color:${getStationStandardDoc(lineStations[0]) === '5Q4-046' ? '#38bdf8' : '#f59e0b'}; border:1px solid ${getStationStandardDoc(lineStations[0]) === '5Q4-046' ? 'rgba(56,189,248,0.4)' : 'rgba(245,158,11,0.4)'}; padding:0.2rem 0.6rem; border-radius:6px; font-size:0.75rem; font-weight:bold;">
+              ${getStationStandardDoc(lineStations[0])} (${getStationStandardRev(getStationStandardDoc(lineStations[0]))})
             </span>
             <span style="background:rgba(16,185,129,0.15); color:#34d399; padding:0.2rem 0.5rem; border-radius:6px; font-size:0.75rem; font-weight:bold;">
               ${lineStations[0]?.phase || 'Phase 1'}
@@ -1380,7 +1404,7 @@ function renderCanvasFreeLayout(stations, canvas) {
     const stLine = st.line_name || st.line;
     const stPhase = st.phase || 'Phase 1';
     const stProc = st.process_type || st.process;
-    const stStd = st.standard_doc || (stCode.includes('SMT') ? '5Q4-046' : '5Q4-053');
+    const stStd = getStationStandardDoc(st);
     const stdColor = stStd === '5Q4-046' ? '#38bdf8' : '#f59e0b';
 
     let posX = st.pos_x !== undefined ? st.pos_x : (30 + (idx % 6) * 245);
@@ -1894,8 +1918,8 @@ function startAuditForStation(st) {
   const stCode = st.station_code || st.code || st.id;
   const stName = st.station_name || st.name || stCode;
   const stLine = st.line_name || st.line || '';
-  const stStd = st.standard_doc || (stCode.includes('SMT') ? '5Q4-046' : '5Q4-053');
-  const rev = stStd === '5Q4-046' ? 'V8' : 'V6';
+  const stStd = getStationStandardDoc(st);
+  const rev = getStationStandardRev(stStd);
 
   const titleEl = document.getElementById('active-station-title');
   const subEl = document.getElementById('active-station-sub');
@@ -1952,7 +1976,7 @@ function renderAuditQuestions(st) {
   container.innerHTML = '';
 
   const stTag = st.process_type || st.tag || st.process || '';
-  const stStd = st.standard_doc || (st.station_code?.includes('SMT') ? '5Q4-046' : '5Q4-053');
+  const stStd = getStationStandardDoc(st);
   const dataset = (typeof masterChecklistData !== 'undefined') ? masterChecklistData : [];
   const allowedTags = (typeof PROCESS_TAG_MAP !== 'undefined' && PROCESS_TAG_MAP[stTag]) ? PROCESS_TAG_MAP[stTag] : [stTag];
 
@@ -2878,7 +2902,7 @@ function renderQrStickers() {
     const stName = st.station_name || st.name;
     const stLine = st.line_name || st.line;
     const stPhase = st.phase || 'Phase 1';
-    const stStd = st.standard_doc || (stCode.includes('SMT') ? '5Q4-046' : '5Q4-053');
+    const stStd = getStationStandardDoc(st);
     const qrDivId = `qr-${stCode.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     card.innerHTML = `
