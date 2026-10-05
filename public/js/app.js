@@ -10,6 +10,7 @@ let activeDefectPhoto = '';
 let auditTimerInterval = null;
 let auditStartTime = null;
 let paretoChartInstance = null;
+let currentParetoPeriod = 'weekly';
 let html5QrScanner = null;
 
 let selectedLayoutMode = 'option3'; // 'option3' (Shopfloor Bay Matrix - Primary Home), 'option1' (Linear Conveyor), 'canvas' (2D Free Canvas)
@@ -2661,6 +2662,46 @@ function switchDashboardSubView(subview) {
   }
 }
 
+// PERIOD SELECTOR FOR PARETO (WEEKLY, MONTHLY, TODAY, ALL TIME)
+function setParetoPeriod(period) {
+  currentParetoPeriod = period || 'weekly';
+
+  // Update button visual styles
+  const btnIds = {
+    weekly: 'pareto-btn-weekly',
+    monthly: 'pareto-btn-monthly',
+    daily: 'pareto-btn-daily',
+    all: 'pareto-btn-all'
+  };
+
+  Object.entries(btnIds).forEach(([pKey, bId]) => {
+    const btn = document.getElementById(bId);
+    if (!btn) return;
+    if (pKey === currentParetoPeriod) {
+      btn.style.background = '#38bdf8';
+      btn.style.color = '#0f172a';
+    } else {
+      btn.style.background = 'transparent';
+      btn.style.color = 'var(--text-muted)';
+    }
+  });
+
+  // Update KPI card period labels
+  const labelMap = {
+    weekly: '(Weekly / 7d)',
+    monthly: '(Monthly / 30d)',
+    daily: '(Today / 24h)',
+    all: '(All Time)'
+  };
+  const badgeAudits = document.getElementById('pareto-badge-audits');
+  if (badgeAudits) {
+    badgeAudits.textContent = labelMap[currentParetoPeriod] || '(Weekly)';
+  }
+
+  // Trigger chart re-render with new period
+  renderParetoChart();
+}
+
 // PARETO DEFECT CHART (100% DYNAMIC & GROUPED BY MANUFACTURING PROCESS)
 async function renderParetoChart() {
   const canvas = document.getElementById('paretoChart');
@@ -2670,18 +2711,15 @@ async function renderParetoChart() {
 
   if (paretoChartInstance) paretoChartInstance.destroy();
 
-  let capas = [];
+  let analytics = { total_audits: 0, compliance_rate: 100.0, open_anomalies: 0, top_process: 'None', top_defects: [], capas: [] };
   try {
-    const res = await apiFetch('/api/capa');
-    if (res.ok) capas = await res.json();
-  } catch (e) {
-    console.warn("Could not load CAPA for Pareto:", e);
-  }
-
-  let analytics = { total_audits: 0, compliance_rate: 100.0, top_defects: [] };
-  try {
-    const resA = await apiFetch('/api/analytics');
-    if (resA.ok) analytics = await resA.json();
+    const resA = await apiFetch(`/api/analytics?period=${currentParetoPeriod}&t=${Date.now()}`);
+    if (resA && resA.ok) {
+      const data = await resA.json();
+      if (data && typeof data === 'object') {
+        analytics = data;
+      }
+    }
   } catch (e) {
     console.warn("Could not load Analytics for Pareto:", e);
   }
@@ -2691,17 +2729,17 @@ async function renderParetoChart() {
   const elAnom = document.getElementById('stat-open-anomalies');
   const elTopProc = document.getElementById('stat-top-process');
 
-  if (elAudits) elAudits.textContent = analytics.total_audits || 0;
-  if (elComp) elComp.textContent = (analytics.compliance_rate != null ? analytics.compliance_rate.toFixed(1) : '100.0') + '%';
-  if (elAnom) {
-    const openCapaCount = capas.filter(c => (c.status || '').toUpperCase() !== 'CLOSED' && (c.status || '').toUpperCase() !== 'DONE').length;
-    elAnom.textContent = openCapaCount;
-  }
+  if (elAudits) elAudits.textContent = (analytics.total_audits || 0).toLocaleString();
+  if (elComp) elComp.textContent = (analytics.compliance_rate != null ? Number(analytics.compliance_rate).toFixed(1) : '100.0') + '%';
+  if (elAnom) elAnom.textContent = (analytics.open_anomalies != null ? analytics.open_anomalies : 0).toLocaleString();
 
   const wrapper = canvas.parentElement;
   let emptyEl = document.getElementById('pareto-empty-state');
 
-  if (!capas || capas.length === 0) {
+  const topDefects = analytics.top_defects || [];
+  const totalDefects = analytics.total_defects || topDefects.reduce((acc, curr) => acc + (curr.defect_count || 0), 0);
+
+  if (!topDefects || topDefects.length === 0 || totalDefects === 0) {
     canvas.style.display = 'none';
     if (!emptyEl) {
       emptyEl = document.createElement('div');
@@ -2712,14 +2750,14 @@ async function renderParetoChart() {
     emptyEl.innerHTML = `
       <div style="text-align: center; padding: 3rem 1.5rem; background: rgba(15, 23, 42, 0.5); border-radius: 12px; border: 1px dashed rgba(56, 189, 248, 0.25);">
         <div style="font-size: 2.8rem; margin-bottom: 0.75rem;">🛡️</div>
-        <div style="font-size: 1.15rem; font-weight: bold; color: #fff; margin-bottom: 0.35rem;">全线运行合格，暂无异常缺陷 (Zero Defects)</div>
+        <div style="font-size: 1.15rem; font-weight: bold; color: #fff; margin-bottom: 0.35rem;">当前时段全线运行合格，暂无异常缺陷 (Zero Defects)</div>
         <div style="font-size: 0.85rem; color: #94a3b8; max-width: 460px; margin: 0 auto; line-height: 1.5;">
-          当前车间所有巡检工位查核符合品质标准。当巡检员在巡检中记录 NG 缺陷后，系统将自动按工序名称归纳生成帕累托 80/20 规律分析。
+          所选时段（${currentParetoPeriod.toUpperCase()}）内所有巡检工位查核符合品质标准。当记录 NG 缺陷后，系统将自动按工序名称归纳生成帕累托 80/20 规律分析。
         </div>
       </div>
     `;
     const tbody = document.getElementById('pareto-process-tbody');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem; color: #34d399; font-weight: bold;">🎉 全厂查核合格，无工序缺陷记录</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 1.5rem; color: #34d399; font-weight: bold;">🎉 当前时段全厂查核合格，无工序缺陷记录</td></tr>';
     if (elTopProc) elTopProc.textContent = 'None (0 Defects)';
     return;
   }
@@ -2727,18 +2765,9 @@ async function renderParetoChart() {
   if (emptyEl) emptyEl.style.display = 'none';
   canvas.style.display = 'block';
 
-  // Group real defect occurrences BY PROCESS NAME
-  const defectCounts = {};
-  capas.forEach(c => {
-    const proc = getProcessNameFromCode(c.station_code);
-    defectCounts[proc] = (defectCounts[proc] || 0) + 1;
-  });
-
-  const sortedDefects = Object.entries(defectCounts).sort((a, b) => b[1] - a[1]);
-  const totalDefects = sortedDefects.reduce((sum, item) => sum + item[1], 0);
-
-  if (elTopProc && sortedDefects.length > 0) {
-    elTopProc.textContent = `${getProcessIcon(sortedDefects[0][0])} ${sortedDefects[0][0]} (${sortedDefects[0][1]})`;
+  if (elTopProc && topDefects.length > 0) {
+    const topP = topDefects[0];
+    elTopProc.textContent = `${getProcessIcon(topP.process_name)} ${topP.process_name} (${topP.defect_count})`;
   }
 
   const labels = [];
@@ -2746,8 +2775,10 @@ async function renderParetoChart() {
   const cumulativePercentages = [];
   let runningSum = 0;
 
-  sortedDefects.forEach(([procName, count]) => {
-    labels.push(procName);
+  topDefects.forEach((item) => {
+    const pName = item.process_name;
+    const count = item.defect_count;
+    labels.push(pName);
     counts.push(count);
     runningSum += count;
     cumulativePercentages.push(Number(((runningSum / totalDefects) * 100).toFixed(1)));
@@ -2757,7 +2788,9 @@ async function renderParetoChart() {
   const tbody = document.getElementById('pareto-process-tbody');
   if (tbody) {
     let runningCum = 0;
-    tbody.innerHTML = sortedDefects.map(([procName, count], idx) => {
+    tbody.innerHTML = topDefects.map((item, idx) => {
+      const procName = item.process_name;
+      const count = item.defect_count;
       runningCum += count;
       const cumPct = Number(((runningCum / totalDefects) * 100).toFixed(1));
       const sharePct = Number(((count / totalDefects) * 100).toFixed(1));

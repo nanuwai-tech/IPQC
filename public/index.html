@@ -668,9 +668,25 @@
               <p style="font-size: 0.85rem; color: var(--text-muted);">按制造制程工序统计缺陷发生频次及累计百分比，识别 80/20 关键改善工序 (Vital Few Processes)</p>
             </div>
 
-            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-              <button class="btn-select" onclick="renderParetoChart()">🔄 刷新图表 (Refresh)</button>
-              <button id="btn-export-pdf" class="btn-primary" style="font-size: 0.9rem;" onclick="window.print()">
+            <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+              <!-- Pareto Period Selector -->
+              <div style="display: inline-flex; background: rgba(15,23,42,0.85); border: 1px solid var(--border-color); border-radius: 8px; padding: 3px; gap: 3px;">
+                <button type="button" id="pareto-btn-weekly" class="pareto-period-pill active" onclick="setParetoPeriod('weekly')" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; background: #38bdf8; color: #0f172a; transition: all 0.2s;" title="Past 7 Days">
+                  📅 周度 (Weekly)
+                </button>
+                <button type="button" id="pareto-btn-monthly" class="pareto-period-pill" onclick="setParetoPeriod('monthly')" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; background: transparent; color: var(--text-muted); transition: all 0.2s;" title="Past 30 Days">
+                  🗓️ 月度 (Monthly)
+                </button>
+                <button type="button" id="pareto-btn-daily" class="pareto-period-pill" onclick="setParetoPeriod('daily')" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; background: transparent; color: var(--text-muted); transition: all 0.2s;" title="Past 24 Hours">
+                  ⏱️ 当日 (Today)
+                </button>
+                <button type="button" id="pareto-btn-all" class="pareto-period-pill" onclick="setParetoPeriod('all')" style="padding: 0.35rem 0.75rem; font-size: 0.78rem; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; background: transparent; color: var(--text-muted); transition: all 0.2s;" title="All Records">
+                  🌐 累计全量 (All Time)
+                </button>
+              </div>
+
+              <button class="btn-select" onclick="renderParetoChart()">🔄 刷新 (Refresh)</button>
+              <button id="btn-export-pdf" class="btn-primary" style="font-size: 0.85rem;" onclick="window.print()">
                 <span id="txt-exportReport">📥 导出报告 (Print / PDF)</span>
               </button>
             </div>
@@ -679,7 +695,7 @@
           <!-- Summary Gauges & Metrics -->
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem;">
             <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; text-align: center;">
-              <div style="font-size: 0.85rem; color: var(--text-muted);">Total Audits Executed</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Total Audits Executed <span id="pareto-badge-audits" style="font-size:0.7rem; color:#38bdf8; font-weight:bold;">(Weekly)</span></div>
               <div id="stat-total-audits" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-cyan); margin-top: 0.3rem;">0</div>
             </div>
 
@@ -690,7 +706,7 @@
             </div>
 
             <div style="background: rgba(15,23,42,0.6); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; text-align: center;">
-              <div style="font-size: 0.85rem; color: var(--text-muted);">Open Anomalies</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">Open Anomalies <span id="pareto-badge-anom" style="font-size:0.7rem; color:#f87171; font-weight:bold;">(Active)</span></div>
               <div id="stat-open-anomalies" style="font-size: 2.2rem; font-weight: 800; color: var(--accent-red); margin-top: 0.3rem;">0</div>
             </div>
 
@@ -1667,7 +1683,7 @@
   <!-- JS App Entrypoint -->
   <script src="js/translations.js?v=99"></script>
   <script src="js/checklist_data.js?v=107"></script>
-  <script src="js/app.js?v=107"></script>
+  <script src="js/app.js?v=108"></script>
 
   <script>
     // Inline quickLogin fallback for PWA cache mismatch safety

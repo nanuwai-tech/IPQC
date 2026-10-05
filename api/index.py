@@ -2557,20 +2557,13 @@ def update_capa(capa_id: str, payload: dict, user=Depends(get_optional_user)):
     supabase_db_query("capa", method="PATCH", params=f"id=eq.{capa_id}", data=payload)
     return {"status": "UPDATED"}
 
-# ANALYTICS & AI INSIGHTS
-@router.get("/analytics")
-def get_analytics():
-    # Fetch live CAPA records from database
-    capas = supabase_db_query_all("capa", params="select=id,station_code,defect_description,status&order=created_at.desc")
-    if not isinstance(capas, list): capas = []
-    
 # Map station codes to standard manufacturing Process Names
 def resolve_process(st_code):
     if not st_code: return "Other Process"
     s = str(st_code).upper()
     if "WAVE" in s or "SOLDER" in s or "WS-" in s: return "DIP-Wave"
     if "REFLOW" in s or "OVEN" in s: return "SMT-Reflow"
-    if "PRINT" in s: return "SMT-Printer"
+    if "PRINT" in s or "STENCIL" in s: return "SMT-Printer"
     if "SPI" in s: return "SMT-SPI"
     if "MNT" in s or "MOUNT" in s or "PLACE" in s: return "SMT-Mounter"
     if "AOI" in s: return "SMT-AOI"
@@ -2584,45 +2577,137 @@ def resolve_process(st_code):
     if "ICT" in s: return "ICT Testing"
     if "FCT" in s: return "Programming & FCT"
     if "PACK" in s or "BOX" in s: return "Inspection & Packaging"
-    if "GLUE" in s or "COAT" in s: return "Glue-Dispensing"
+    if "GLUE" in s or "COAT" in s or "DISPENS" in s: return "Glue-Dispensing"
     if "FAI" in s: return "FAI First Article"
+    if "DEPANEL" in s or "ROUT" in s: return "Depaneling"
+    if "ASSY" in s or "ASSEMBL" in s: return "Assembly"
     return st_code
 
-# ANALYTICS & AI INSIGHTS
+# ANALYTICS & DEFECT PARETO (WEEKLY, MONTHLY, DAILY, ALL TIME)
 @router.get("/analytics")
-def get_analytics():
-    # Fetch live CAPA records from database
-    capas = supabase_db_query_all("capa", params="select=id,station_code,defect_description,status&order=created_at.desc")
-    if not isinstance(capas, list): capas = []
+def get_analytics(period: Optional[str] = "weekly", days: Optional[int] = None, line_name: Optional[str] = None):
+    from datetime import datetime, timezone, timedelta
+    from api.db_adapter import get_pg_pool, json_serial
+    from psycopg2.extras import RealDictCursor
 
+    now = datetime.now(timezone.utc)
+    cutoff = None
+    p_lower = (period or "weekly").lower()
+    if days and days > 0:
+        cutoff = now - timedelta(days=days)
+    elif p_lower in ("daily", "today", "24h", "1d"):
+        cutoff = now - timedelta(days=1)
+    elif p_lower in ("weekly", "week", "7d"):
+        cutoff = now - timedelta(days=7)
+    elif p_lower in ("monthly", "month", "30d"):
+        cutoff = now - timedelta(days=30)
+    elif p_lower in ("all", "all_time", "total"):
+        cutoff = None
+    else:
+        cutoff = now - timedelta(days=7)
+
+    total_audits = 0
+    total_ok = 0
+    capas = []
+
+    pool = get_pg_pool()
+    if pool:
+        conn = None
+        try:
+            conn = pool.getconn()
+            cur = conn.cursor(cursor_factory=RealDictCursor)
+
+            # 1. Total Audits and OK counts
+            audit_where = []
+            audit_args = []
+            if cutoff:
+                audit_where.append("audit_time >= %s")
+                audit_args.append(cutoff)
+            if line_name and line_name != "All Lines":
+                audit_where.append("line_name = %s")
+                audit_args.append(line_name)
+
+            where_audit_str = ("WHERE " + " AND ".join(audit_where)) if audit_where else ""
+            cur.execute(f"SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE overall_status = 'OK') AS total_ok FROM audits {where_audit_str}", audit_args)
+            row = cur.fetchone()
+            if row:
+                total_audits = row["total"] or 0
+                total_ok = row["total_ok"] or 0
+
+            # 2. CAPA / Defect occurrences
+            capa_where = []
+            capa_args = []
+            if cutoff:
+                capa_where.append("created_at >= %s")
+                capa_args.append(cutoff)
+            if line_name and line_name != "All Lines":
+                capa_where.append("line_name = %s")
+                capa_args.append(line_name)
+
+            where_capa_str = ("WHERE " + " AND ".join(capa_where)) if capa_where else ""
+            cur.execute(f"SELECT id, station_code, line_name, item_no, defect_description, severity, status, created_at FROM capa {where_capa_str} ORDER BY created_at DESC", capa_args)
+            raw_capas = cur.fetchall() or []
+            for c in raw_capas:
+                c_dict = dict(c)
+                c_dict["created_at"] = json_serial(c_dict.get("created_at"))
+                capas.append(c_dict)
+
+            cur.close()
+            pool.putconn(conn)
+        except Exception as e:
+            if conn:
+                try: pool.putconn(conn)
+                except Exception: pass
+            print("Analytics DB pool error:", e)
+
+    if not pool or (total_audits == 0 and not capas):
+        # Fallback to Supabase PostgREST
+        capas_res = supabase_db_query("capa", params="select=id,station_code,line_name,item_no,defect_description,status,created_at&order=created_at.desc&limit=2000")
+        if isinstance(capas_res, list):
+            capas = capas_res
+            if cutoff:
+                cutoff_iso = cutoff.isoformat()
+                capas = [c for c in capas if (c.get("created_at") or "") >= cutoff_iso]
+
+        audits_res = supabase_db_query("audits", params="select=id,overall_status,audit_time&order=audit_time.desc&limit=5000")
+        if isinstance(audits_res, list) and audits_res:
+            if cutoff:
+                cutoff_iso = cutoff.isoformat()
+                audits_res = [a for a in audits_res if (a.get("audit_time") or "") >= cutoff_iso]
+            total_audits = len(audits_res)
+            total_ok = sum(1 for a in audits_res if a.get("overall_status") == "OK")
+
+    # Aggregate defect counts by standard manufacturing process
     proc_counts = {}
     for c in capas:
         proc = resolve_process(c.get("station_code"))
         proc_counts[proc] = proc_counts.get(proc, 0) + 1
-        
+
+    total_defects = sum(proc_counts.values())
     top_processes = [
-        {"process_name": p, "zh": p, "defect_count": cnt}
-        for p, cnt in sorted(proc_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+        {
+            "process_name": p, 
+            "zh": p, 
+            "defect_count": cnt,
+            "share_pct": round((cnt / total_defects * 100), 1) if total_defects > 0 else 0.0
+        }
+        for p, cnt in sorted(proc_counts.items(), key=lambda x: x[1], reverse=True)
     ]
-    
-    # Query audits count
-    audits_res = supabase_db_query_all("audits", params="select=id,overall_status&order=audit_time.desc")
-    if isinstance(audits_res, list) and audits_res:
-        total_audits = len(audits_res)
-        total_ok = sum(1 for a in audits_res if a.get("overall_status") == "OK")
-    else:
-        total_audits = len(AUDITS_DB)
-        total_ok = sum(1 for a in AUDITS_DB if a.get("overall_status") == "OK")
 
     open_capas = len([c for c in capas if (c.get("status") or "").upper() not in ("CLOSED", "DONE", "RESOLVED")])
-    
     compliance = round((total_ok / total_audits * 100), 1) if total_audits > 0 else 100.0
-    
+
     return {
+        "status": "SUCCESS",
+        "period": p_lower,
         "total_audits": total_audits,
+        "total_ok": total_ok,
         "compliance_rate": compliance,
         "open_anomalies": open_capas,
-        "top_defects": top_processes
+        "total_defects": total_defects,
+        "top_process": top_processes[0]["process_name"] if top_processes else "None",
+        "top_defects": top_processes,
+        "capas": capas
     }
 
 # ==============================================================================
